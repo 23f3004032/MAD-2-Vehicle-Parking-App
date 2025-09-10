@@ -36,3 +36,54 @@ api.interceptors.response.use(
 )
 
 export default api
+
+// API Service wrapper with error handling
+export const apiService = {
+  async get(url) {
+    try {
+      const response = await api.get(url)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Request failed' 
+      }
+    }
+  },
+
+  async post(url, data) {
+    try {
+      const response = await api.post(url, data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Request failed' 
+      }
+    }
+  },
+
+  async put(url, data) {
+    try {
+      const response = await api.put(url, data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Request failed' 
+      }
+    }
+  },
+
+  async delete(url) {
+    try {
+      const response = await api.delete(url)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Request failed' 
+      }
+    }
+  }
+}

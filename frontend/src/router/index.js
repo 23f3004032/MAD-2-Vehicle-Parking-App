@@ -23,21 +23,21 @@ const routes = [
     component: Register
   },
   
-  // User routes (will be added in later prompts)
-  // {
-  //   path: '/user/dashboard',
-  //   name: 'UserDashboard',
-  //   component: () => import('@/views/user/UserDashboard.vue'),
-  //   meta: { requiresAuth: true, role: 'user' }
-  // },
+  // User routes
+  {
+    path: '/user/dashboard',
+    name: 'UserDashboard',
+    component: () => import('@/views/UserDashboard.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
   
-  // Admin routes (will be added in later prompts)
-  // {
-  //   path: '/admin/dashboard',
-  //   name: 'AdminDashboard',
-  //   component: () => import('@/views/admin/AdminDashboard.vue'),
-  //   meta: { requiresAuth: true, role: 'admin' }
-  // }
+  // Admin routes
+  {
+    path: '/admin/dashboard',
+    name: 'AdminDashboard',
+    component: () => import('@/views/admin/AdminDashboard.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  }
 ]
 
 const router = createRouter({
@@ -50,17 +50,21 @@ router.beforeEach((to, from, next) => {
   const token = getToken()
   const user = getUser()
 
-  // For now, allow access to login/register pages regardless of auth status
-  // This will be properly implemented when we create dashboard pages
-  
   // Redirect unauthenticated users away from protected pages
   if (to.meta.requiresAuth && !token) {
     return next('/login')
   }
 
-  // Check role-based access for protected routes (when they exist)
+  // Check role-based access for protected routes
   if (to.meta.role && (!user || user.role !== to.meta.role)) {
-    return next('/')
+    // If user is authenticated but wrong role, redirect to appropriate page
+    if (user?.role === 'admin') {
+      return next('/admin/dashboard')
+    } else if (user?.role === 'user') {
+      return next('/') // Will redirect to user dashboard when it exists
+    } else {
+      return next('/login')
+    }
   }
 
   next()

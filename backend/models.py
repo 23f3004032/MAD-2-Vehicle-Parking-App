@@ -35,10 +35,8 @@ class Lot(db.Model):
     name = db.Column(db.String(100), nullable=False, unique=True)
     prime_location_name = db.Column(db.String(100), nullable=False)
     price = db.Column(db.Float, nullable=False)
-    address = db.Column(db.String(200), nullable=False)
     pincode = db.Column(db.Integer, nullable=False)
     no_of_spots = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     
     # Relationships
     spots = db.relationship('Spot', back_populates='lot', cascade="all, delete-orphan", passive_deletes=True)
@@ -49,10 +47,8 @@ class Lot(db.Model):
             'name': self.name,
             'prime_location_name': self.prime_location_name,
             'price': self.price,
-            'address': self.address,
             'pincode': self.pincode,
             'no_of_spots': self.no_of_spots,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
             'available_spots': len([s for s in self.spots if s.status == 'A']),
             'occupied_spots': len([s for s in self.spots if s.status == 'O'])
         }
@@ -64,7 +60,6 @@ class Spot(db.Model):
     lot_id = db.Column(db.Integer, db.ForeignKey("lot.id", ondelete="CASCADE"))
     spot_number = db.Column(db.Integer, nullable=False)
     status = db.Column(db.Enum('A', 'O', name='status'), default='A')  # A=Available, O=Occupied
-    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
     
     # Relationships
     lot = db.relationship('Lot', back_populates='spots')
@@ -75,8 +70,7 @@ class Spot(db.Model):
             'id': self.id,
             'lot_id': self.lot_id,
             'spot_number': self.spot_number,
-            'status': self.status,
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'status': self.status
         }
 
 class ReserveSpot(db.Model):

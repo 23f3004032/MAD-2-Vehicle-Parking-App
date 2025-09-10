@@ -65,14 +65,14 @@ def create_admin():
         admin = User.query.filter_by(role='admin').first()
         if not admin:
             admin = User(
-                email='admin@parkus.com',
-                fullname='Admin User',
+                email='admin@onlypark.com',
+                fullname='Admin',
                 role='admin'
             )
-            admin.set_password('admin123')
+            admin.set_password('admin')
             db.session.add(admin)
             db.session.commit()
-            print("✅ Admin user created: admin@parkus.com / admin123")
+            print("✅ Admin user created: admin@onlypark.com / admin")
         else:
             print("✅ Admin user already exists")
     except Exception as e:

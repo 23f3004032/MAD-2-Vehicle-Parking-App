@@ -167,9 +167,13 @@ const handleRegister = async () => {
     
     if (result.success) {
       const user = getUser()
-      // For now, redirect to home page since dashboard routes don't exist yet
-      // This will be updated when we create dashboard pages
-      router.push('/')
+      // Redirect based on role
+      if (user?.role === 'admin') {
+        router.push('/admin/dashboard')
+      } else {
+        // For now, redirect to home page since user dashboard doesn't exist yet
+        router.push('/')
+      }
     } else {
       error.value = result.error
     }
