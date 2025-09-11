@@ -253,10 +253,6 @@
                     <i class="bi bi-person me-2"></i>
                     {{ spot.user_name }}
                   </p>
-                  <p class="time-info">
-                    <i class="bi bi-clock me-2"></i>
-                    Parked: {{ formatParkingTime(spot.parked_since) }}
-                  </p>
                 </div>
                 
                 <div v-else class="availability-info">

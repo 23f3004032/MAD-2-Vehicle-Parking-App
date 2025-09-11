@@ -7,6 +7,12 @@ from sqlalchemy import and_
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
+def ensure_timezone_aware(dt):
+    """Ensure datetime is timezone-aware. If naive, assume UTC."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
 @user_bp.route('/profile', methods=['GET'])
 @login_required
 def get_profile():
@@ -204,7 +210,11 @@ def release_parking_spot(reservation_id):
         
         # Calculate parking duration and cost
         now = datetime.now(timezone.utc)
-        duration_hours = (now - reservation.parking_time).total_seconds() / 3600
+        
+        # Handle timezone-aware and timezone-naive parking_time
+        parking_time = ensure_timezone_aware(reservation.parking_time)
+        
+        duration_hours = (now - parking_time).total_seconds() / 3600
         
         # Get lot for pricing (need to get lot through spot relationship)
         spot = Spot.query.get(reservation.spot_id)
@@ -228,7 +238,7 @@ def release_parking_spot(reservation_id):
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to release parking spot'}), 500
+        return jsonify({'error': f'Failed to release parking spot: {str(e)}'}), 500
 
 # ================ BOOKING MANAGEMENT ================
 
@@ -262,7 +272,9 @@ def get_user_reservations():
             
             # Calculate duration if completed
             if reservation.leaving_time:
-                duration = (reservation.leaving_time - reservation.parking_time).total_seconds() / 3600
+                leaving_time = ensure_timezone_aware(reservation.leaving_time)
+                parking_time = ensure_timezone_aware(reservation.parking_time)
+                duration = (leaving_time - parking_time).total_seconds() / 3600
                 reservation_info['duration_hours'] = round(duration, 2)
             
             reservations_data.append(reservation_info)
@@ -293,7 +305,11 @@ def get_current_reservation():
         
         # Calculate current duration and estimated cost
         now = datetime.now(timezone.utc)
-        current_duration = (now - reservation.parking_time).total_seconds() / 3600
+        
+        # Handle timezone-aware and timezone-naive parking_time
+        parking_time = ensure_timezone_aware(reservation.parking_time)
+        
+        current_duration = (now - parking_time).total_seconds() / 3600
         estimated_cost = max(current_duration * lot.price, lot.price)
         
         reservation_info = {

@@ -122,9 +122,9 @@
             </div>
             
             <div class="reservation-actions">
-              <button @click="releaseSpot" class="btn btn-danger" :disabled="releasing">
+              <button @click="releaseSpot(currentReservation.id)" class="btn btn-danger" :disabled="releasing === currentReservation.id">
                 <i class="bi bi-stop-circle me-2"></i>
-                {{ releasing ? 'Releasing...' : 'Release Spot' }}
+                {{ releasing === currentReservation.id ? 'Releasing...' : 'Release Spot' }}
               </button>
             </div>
           </div>
@@ -249,7 +249,22 @@
               </div>
               <div class="cell">₹{{ (reservation.cost || 0).toFixed(2) }}</div>
               <div class="cell">
-                <span class="status-badge" :class="reservation.status">
+                <span 
+                  v-if="reservation.status === 'active'" 
+                  class="status-badge active-with-action"
+                >
+                  <span class="status-text">{{ reservation.status }}</span>
+                  <button 
+                    @click="releaseSpot(reservation.id)" 
+                    class="btn btn-sm btn-danger release-btn"
+                    :disabled="releasing === reservation.id"
+                    title="Release parking spot"
+                  >
+                    <i class="bi bi-stop-circle"></i>
+                    {{ releasing === reservation.id ? 'Releasing...' : 'Release' }}
+                  </button>
+                </span>
+                <span v-else class="status-badge" :class="reservation.status">
                   {{ reservation.status }}
                 </span>
               </div>
@@ -333,7 +348,7 @@ const user = ref(getUser())
 
 // Data
 const loading = ref(true)
-const releasing = ref(false)
+const releasing = ref(null) // Changed to track specific reservation ID being released
 const stats = ref(null)
 const parkingLots = ref([])
 const reservations = ref([])
@@ -465,15 +480,20 @@ const bookSpot = async () => {
   }
 }
 
-const releaseSpot = async () => {
+const releaseSpot = async (reservationId) => {
+  if (!reservationId) {
+    alert('Error: No reservation ID provided')
+    return
+  }
+  
   if (!confirm('Are you sure you want to release your parking spot?')) {
     return
   }
   
   try {
-    releasing.value = true
+    releasing.value = reservationId // Set which reservation is being released
     
-    const response = await apiService.post(`/user/release-spot/${currentReservation.value.id}`)
+    const response = await apiService.post(`/user/release-spot/${reservationId}`)
     
     if (response.success) {
       await loadDashboardData() // Refresh all data
@@ -483,9 +503,10 @@ const releaseSpot = async () => {
     }
     
   } catch (error) {
+    console.error('Release error:', error)
     alert('An unexpected error occurred')
   } finally {
-    releasing.value = false
+    releasing.value = null // Clear releasing state
   }
 }
 
@@ -946,6 +967,41 @@ onMounted(() => {
 .status-badge.active {
   background: rgba(245, 158, 11, 0.2);
   color: #fbbf24;
+}
+
+.status-badge.active-with-action {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.status-badge.active-with-action .status-text {
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.release-btn {
+  font-size: 0.7rem !important;
+  padding: 0.15rem 0.4rem !important;
+  border-radius: 6px !important;
+  background: #dc2626 !important;
+  border: none !important;
+  color: white !important;
+  transition: all 0.2s ease !important;
+}
+
+.release-btn:hover:not(:disabled) {
+  background: #b91c1c !important;
+  transform: translateY(-1px);
+}
+
+.release-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
 }
 
 .status-badge.completed {
