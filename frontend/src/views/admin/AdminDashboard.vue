@@ -38,6 +38,24 @@
           <p class="dashboard-subtitle">Manage parking lots and monitor system performance</p>
         </div>
 
+        <!-- Navigation Tabs -->
+        <div class="admin-nav-tabs">
+          <button 
+            class="nav-tab active"
+            @click="currentTab = 'dashboard'"
+            :class="{ active: currentTab === 'dashboard' }"
+          >
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+          </button>
+          <button 
+            class="nav-tab"
+            @click="navigateToAnalytics"
+            :class="{ active: currentTab === 'analytics' }"
+          >
+            <i class="bi bi-graph-up me-2"></i>Analytics
+          </button>
+        </div>
+
         <!-- Statistics Cards -->
         <div class="stats-grid" v-if="stats">
           <div class="stat-card">
@@ -404,6 +422,9 @@ import { getUser, removeToken } from '@/utils/auth'
 const router = useRouter()
 const user = ref(getUser())
 
+// Navigation state
+const currentTab = ref('dashboard')
+
 // Data
 const loading = ref(true)
 const stats = ref(null)
@@ -624,6 +645,11 @@ const deleteLot = async (lot) => {
   }
 }
 
+// Navigation
+const navigateToAnalytics = () => {
+  router.push('/admin/analytics')
+}
+
 const handleLogout = () => {
   removeToken()
   router.push('/')
@@ -728,6 +754,52 @@ onMounted(() => {
   font-size: 1.1rem;
   opacity: 0.8;
   margin: 0;
+}
+
+/* Navigation Tabs */
+.admin-nav-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 3rem;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.nav-tab.active {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.nav-tab i {
+  font-size: 1rem;
 }
 
 /* Statistics Grid */

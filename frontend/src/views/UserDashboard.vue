@@ -35,6 +35,24 @@
           <p class="dashboard-subtitle">Find and book parking spots easily</p>
         </div>
 
+        <!-- Navigation Tabs -->
+        <div class="user-nav-tabs">
+          <button 
+            class="nav-tab active"
+            @click="currentTab = 'dashboard'"
+            :class="{ active: currentTab === 'dashboard' }"
+          >
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+          </button>
+          <button 
+            class="nav-tab"
+            @click="navigateToAnalytics"
+            :class="{ active: currentTab === 'analytics' }"
+          >
+            <i class="bi bi-graph-up me-2"></i>Analytics
+          </button>
+        </div>
+
         <!-- Statistics Cards -->
         <div class="stats-grid" v-if="stats">
           <div class="stat-card">
@@ -87,45 +105,75 @@
           </div>
           
           <div class="current-reservation-card">
-            <div class="reservation-header">
-              <div class="lot-info">
-                <h3>{{ currentReservation.lot_name }}</h3>
-                <p>{{ currentReservation.lot_location }}</p>
-              </div>
-              <div class="spot-info">
-                <div class="spot-number">
-                  Spot {{ currentReservation.spot_number }}
+            <div class="reservation-grid">
+              <!-- Location Column -->
+              <div class="info-column location-column">
+                <div class="column-header">
+                  <i class="bi bi-geo-alt-fill"></i>
+                  <span>Location</span>
                 </div>
-                <div class="vehicle-number">
-                  {{ currentReservation.vehicle_number }}
+                <div class="column-content">
+                  <h3>{{ currentReservation.lot_name }}</h3>
+                  <p>{{ currentReservation.lot_location }}</p>
                 </div>
               </div>
-            </div>
-            
-            <div class="reservation-details">
-              <div class="detail-item">
-                <i class="bi bi-clock me-2"></i>
-                <span>Parked: {{ formatDateTime(currentReservation.parking_time) }}</span>
+
+              <!-- Parking Details Column -->
+              <div class="info-column details-column">
+                <div class="column-header">
+                  <i class="bi bi-info-circle-fill"></i>
+                  <span>Parking Details</span>
+                </div>
+                <div class="column-content">
+                  <div class="detail-row">
+                    <span class="detail-label">Spot Number:</span>
+                    <span class="spot-badge">{{ currentReservation.spot_number }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Vehicle:</span>
+                    <span class="vehicle-badge">{{ currentReservation.vehicle_number }}</span>
+                  </div>
+                  <div class="detail-row">
+                    <span class="detail-label">Parked At:</span>
+                    <span class="time-text">{{ formatDateTime(currentReservation.parking_time) }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="detail-item">
-                <i class="bi bi-stopwatch me-2"></i>
-                <span>Duration: {{ currentReservation.current_duration_hours }}h</span>
+
+              <!-- Cost & Duration Column -->
+              <div class="info-column cost-column">
+                <div class="column-header">
+                  <i class="bi bi-currency-rupee"></i>
+                  <span>Cost & Time</span>
+                </div>
+                <div class="column-content">
+                  <div class="cost-item">
+                    <div class="cost-value">₹{{ currentReservation.estimated_cost }}</div>
+                    <div class="cost-label">Estimated Cost</div>
+                  </div>
+                  <div class="duration-item">
+                    <div class="duration-value">{{ currentReservation.current_duration_hours }}h</div>
+                    <div class="duration-label">Duration</div>
+                  </div>
+                  <div class="rate-item">
+                    <span class="rate-text">₹{{ currentReservation.hourly_rate }}/hour</span>
+                  </div>
+                </div>
               </div>
-              <div class="detail-item">
-                <i class="bi bi-currency-rupee me-2"></i>
-                <span>Est. Cost: ₹{{ currentReservation.estimated_cost }}</span>
+
+              <!-- Actions Column -->
+              <div class="info-column actions-column">
+                <div class="column-header">
+                  <i class="bi bi-gear-fill"></i>
+                  <span>Actions</span>
+                </div>
+                <div class="column-content">
+                  <button @click="releaseSpot(currentReservation.id)" class="btn btn-release" :disabled="releasing === currentReservation.id">
+                    <i class="bi bi-stop-circle me-2"></i>
+                    {{ releasing === currentReservation.id ? 'Releasing...' : 'Release Spot' }}
+                  </button>
+                </div>
               </div>
-              <div class="detail-item">
-                <i class="bi bi-tag me-2"></i>
-                <span>Rate: ₹{{ currentReservation.hourly_rate }}/hour</span>
-              </div>
-            </div>
-            
-            <div class="reservation-actions">
-              <button @click="releaseSpot(currentReservation.id)" class="btn btn-danger" :disabled="releasing === currentReservation.id">
-                <i class="bi bi-stop-circle me-2"></i>
-                {{ releasing === currentReservation.id ? 'Releasing...' : 'Release Spot' }}
-              </button>
             </div>
           </div>
         </div>
@@ -346,6 +394,9 @@ import { getUser, removeToken } from '@/utils/auth'
 const router = useRouter()
 const user = ref(getUser())
 
+// Navigation state
+const currentTab = ref('dashboard')
+
 // Data
 const loading = ref(true)
 const releasing = ref(null) // Changed to track specific reservation ID being released
@@ -395,12 +446,16 @@ const loadDashboardData = async () => {
   try {
     loading.value = true
     
+    // Reset current reservation first
+    currentReservation.value = null
+    
     // Load all data in parallel
+    const timestamp = Date.now()
     const [statsResponse, lotsResponse, reservationsResponse, currentResponse] = await Promise.all([
-      apiService.get('/user/dashboard-stats'),
-      apiService.get('/user/lots'),
-      apiService.get('/user/reservations'),
-      apiService.get('/user/current-reservation')
+      apiService.get(`/user/dashboard-stats?t=${timestamp}`),
+      apiService.get(`/user/lots?t=${timestamp}`),
+      apiService.get(`/user/reservations?t=${timestamp}`),
+      apiService.get(`/user/current-reservation?t=${timestamp}`)
     ])
     
     if (statsResponse.success) {
@@ -415,12 +470,19 @@ const loadDashboardData = async () => {
       reservations.value = reservationsResponse.data.reservations || []
     }
     
-    if (currentResponse.success) {
+    if (currentResponse.success && currentResponse.data && currentResponse.data.current_reservation) {
+      console.log('Current reservation API response:', currentResponse.data)
       currentReservation.value = currentResponse.data.current_reservation
+      console.log('Set currentReservation to:', currentReservation.value)
+    } else {
+      console.log('No current reservation or API failed:', currentResponse)
+      currentReservation.value = null
     }
     
   } catch (error) {
     console.error('Failed to load dashboard:', error)
+    // Ensure currentReservation is null on error
+    currentReservation.value = null
   } finally {
     loading.value = false
   }
@@ -516,6 +578,11 @@ const formatDateTime = (timestamp) => {
 
 const formatDate = (timestamp) => {
   return new Date(timestamp).toLocaleDateString()
+}
+
+// Navigation
+const navigateToAnalytics = () => {
+  router.push('/user/analytics')
 }
 
 const handleLogout = () => {
@@ -614,6 +681,52 @@ onMounted(() => {
   margin: 0;
 }
 
+/* Navigation Tabs */
+.user-nav-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 3rem;
+}
+
+.nav-tab {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.nav-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
+.nav-tab.active {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.nav-tab i {
+  font-size: 1rem;
+}
+
 /* Statistics Grid */
 .stats-grid {
   display: grid;
@@ -700,62 +813,203 @@ onMounted(() => {
 .current-reservation-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
-  padding: 2rem;
+  padding: 0;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-left: 4px solid #f59e0b;
+  overflow: hidden;
 }
 
-.reservation-header {
+.reservation-grid {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1.5fr 1fr;
+  gap: 0;
+  min-height: 180px;
+}
+
+.info-column {
+  padding: 1.5rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
 }
 
-.lot-info h3 {
+.info-column:last-child {
+  border-right: none;
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.column-header i {
+  font-size: 1rem;
+}
+
+.column-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+/* Location Column */
+.location-column .column-content h3 {
   margin: 0 0 0.5rem 0;
   color: #ffffff;
-  font-size: 1.25rem;
-}
-
-.lot-info p {
-  margin: 0;
-  color: #94a3b8;
-}
-
-.spot-info {
-  text-align: right;
-}
-
-.spot-number {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #ffffff;
+}
+
+.location-column .column-content p {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
+/* Details Column */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.detail-label {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.spot-badge {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.vehicle-badge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.time-text {
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+/* Cost Column */
+.cost-item, .duration-item {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.cost-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #10b981;
   margin-bottom: 0.25rem;
 }
 
-.vehicle-number {
+.cost-label {
   color: #94a3b8;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
 }
 
-.reservation-details {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-  margin-bottom: 2rem;
+.duration-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 0.25rem;
 }
 
-.detail-item {
+.duration-label {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.rate-item {
+  text-align: center;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rate-text {
+  color: #f59e0b;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Actions Column */
+.actions-column {
+  background: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
-  color: #e2e8f0;
-  font-size: 0.9rem;
+  justify-content: center;
 }
 
-.reservation-actions {
-  text-align: center;
+.btn-release {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: all 0.3s ease;
+  width: 100%;
+  max-width: 120px;
+}
+
+.btn-release:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-release:disabled {
+  background: #64748b;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .reservation-grid {
+    grid-template-columns: 1fr;
+    gap: 1px;
+  }
+  
+  .info-column {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+  }
+  
+  .info-column:last-child {
+    border-bottom: none;
+  }
+  
+  .actions-column {
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 
 /* Parking Lots Section */

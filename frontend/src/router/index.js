@@ -30,12 +30,24 @@ const routes = [
     component: () => import('@/views/UserDashboard.vue'),
     meta: { requiresAuth: true, role: 'user' }
   },
+  {
+    path: '/user/analytics',
+    name: 'UserAnalytics',
+    component: () => import('@/views/UserAnalytics.vue'),
+    meta: { requiresAuth: true, role: 'user' }
+  },
   
   // Admin routes
   {
     path: '/admin/dashboard',
     name: 'AdminDashboard',
     component: () => import('@/views/admin/AdminDashboard.vue'),
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/admin/analytics',
+    name: 'AdminAnalytics',
+    component: () => import('@/views/AdminAnalytics.vue'),
     meta: { requiresAuth: true, role: 'admin' }
   }
 ]
