@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
+#-------------------------------------------------------#
+#-------------------Admin stats at topbar---------------#
+#-------------------------------------------------------#
 @admin_bp.route('/dashboard-stats', methods=['GET'])
 @admin_required
 def get_admin_dashboard_stats():
@@ -14,47 +17,28 @@ def get_admin_dashboard_stats():
         total_users = User.query.filter_by(role='user').count()
         total_lots = Lot.query.count()
         total_spots = Spot.query.count()
-        occupied_spots = Spot.query.filter_by(status='O').count()
-        available_spots = total_spots - occupied_spots
         
         # Get revenue
         total_revenue = db.session.query(db.func.sum(ReserveSpot.cost)).scalar() or 0
-        
-        # Get recent bookings
-        recent_bookings = ReserveSpot.query.order_by(
-            ReserveSpot.parking_time.desc()
-        ).limit(5).all()
         
         return jsonify({
             'total_users': total_users,
             'total_lots': total_lots,
             'total_spots': total_spots,
-            'occupied_spots': occupied_spots,
-            'available_spots': available_spots,
             'total_revenue': total_revenue,
-            'recent_bookings': [booking.to_dict() for booking in recent_bookings]
         }), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get admin stats'}), 500
 
-@admin_bp.route('/users', methods=['GET'])
-@admin_required
-def get_all_users():
-    try:
-        users = User.query.filter_by(role='user').all()
-        return jsonify({
-            'users': [user.to_dict() for user in users]
-        }), 200
-    except Exception as e:
-        return jsonify({'error': 'Failed to get users'}), 500
+#-------------------------------------------------------#
+#------------Parking lot management section-------------#
+#-------------------------------------------------------#
 
-# ================ PARKING LOT MANAGEMENT CRUD ================
-
+#------Get all parking lots with their spot statistics------#
 @admin_bp.route('/lots', methods=['GET'])
 @admin_required
 def get_all_lots():
-    """Get all parking lots with their spot statistics"""
     try:
         lots = Lot.query.all()
         return jsonify({
@@ -63,10 +47,11 @@ def get_all_lots():
     except Exception as e:
         return jsonify({'error': 'Failed to get parking lots'}), 500
 
+#------Create a new parking lot and automatically generate spots------#
+
 @admin_bp.route('/lots', methods=['POST'])
 @admin_required
 def create_lot():
-    """Create a new parking lot and automatically generate spots"""
     try:
         data = request.get_json()
         
@@ -111,12 +96,16 @@ def create_lot():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to create parking lot'}), 500
+        return jsonify({'error': 'Failed to create parking lot'}),
 
+#-------------------------------------------------------#
+#------------Edit and Delete Parking Lots---------------#
+#-------------------------------------------------------#
+
+#-------Get detailed info about a specific lot------#
 @admin_bp.route('/lots/<int:lot_id>', methods=['GET'])
 @admin_required
 def get_lot_details(lot_id):
-    """Get detailed information about a specific lot"""
     try:
         lot = Lot.query.get_or_404(lot_id)
         return jsonify({
@@ -126,6 +115,7 @@ def get_lot_details(lot_id):
     except Exception as e:
         return jsonify({'error': 'Failed to get lot details'}), 500
 
+#---------Edit a parking lot---------#
 @admin_bp.route('/lots/<int:lot_id>', methods=['PUT'])
 @admin_required
 def update_lot(lot_id):
@@ -196,10 +186,11 @@ def update_lot(lot_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to update parking lot'}), 500
 
+#---------Delete a parking lot---------#
+
 @admin_bp.route('/lots/<int:lot_id>', methods=['DELETE'])
 @admin_required
 def delete_lot(lot_id):
-    """Delete a parking lot and all its spots"""
     try:
         lot = Lot.query.get_or_404(lot_id)
         
@@ -218,12 +209,13 @@ def delete_lot(lot_id):
         db.session.rollback()
         return jsonify({'error': 'Failed to delete parking lot'}), 500
 
-# ================ SPOT STATUS MONITORING ================
+#-------------------------------------------------------#
+#----------------Spot Status Monitoring-----------------#
+#-------------------------------------------------------#
 
 @admin_bp.route('/spots/status', methods=['GET'])
 @admin_required
 def get_spots_status():
-    """Get comprehensive status of all parking spots across all lots"""
     try:
         # Query spots with their lots and active reservations
         spots = db.session.query(Spot, Lot).join(Lot, Spot.lot_id == Lot.id).all()
@@ -241,14 +233,12 @@ def get_spots_status():
             
             # If spot is occupied, get reservation details
             if spot.status == 'O':
-                # Find active reservation for this spot
                 reservation = ReserveSpot.query.filter_by(
                     spot_id=spot.id,
                     leaving_time=None  # Active reservation
                 ).first()
                 
                 if reservation:
-                    # Get user details
                     user = User.query.get(reservation.user_id)
                     spot_info.update({
                         'vehicle_number': reservation.vehicle_no,
@@ -293,8 +283,3 @@ def get_spots_status():
         traceback.print_exc()
         return jsonify({'error': f'Failed to get spot status: {str(e)}'}), 500
 
-@admin_bp.route('/test', methods=['GET'])
-@admin_required  
-def test_admin_api():
-    """Simple test endpoint to verify admin API is working"""
-    return jsonify({'message': 'Admin API is working', 'user': g.current_user.email}), 200

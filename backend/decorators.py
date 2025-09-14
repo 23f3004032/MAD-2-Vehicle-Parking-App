@@ -1,8 +1,13 @@
+#----- it controls who can access what in app ----------#
+#----- we write wrappers so that we can use them as decorators again -------#
 from functools import wraps
 from flask import abort, g
 from models import User
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+#---------------------------------------------------------------------------#
+#-------------------------Wrapper for logged in users-----------------------#
+#---------------------------------------------------------------------------#
 def login_required(f):
     @wraps(f)
     @jwt_required()
@@ -15,6 +20,9 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+#---------------------------------------------------------------------------#
+#-------------------------Wrapper for logged in admin -----------------------#
+#---------------------------------------------------------------------------#
 def admin_required(f):
     @wraps(f)
     @login_required

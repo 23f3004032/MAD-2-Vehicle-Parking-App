@@ -1,3 +1,5 @@
+#this auth.py is my authentication blueprint.
+
 from flask import request, Blueprint, jsonify, g
 from flask_jwt_extended import create_access_token, get_jwt_identity
 from models import db, User
@@ -6,6 +8,9 @@ from decorators import login_required
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
+#---------------------------------------------------------------------------#
+#-------------------------Signup Route---------------------------------------#
+#---------------------------------------------------------------------------#
 @auth_bp.route('/register', methods=['POST'])
 def register():
     try:
@@ -43,6 +48,9 @@ def register():
         db.session.rollback()
         return jsonify({'error': 'Registration failed'}), 500
 
+#---------------------------------------------------------------------------#
+#-------------------------Login Route---------------------------------------#
+#---------------------------------------------------------------------------#
 @auth_bp.route('/login', methods=['POST'])
 def login():
     try:
@@ -66,10 +74,13 @@ def login():
             'access_token': access_token,
             'user': user.to_dict()
         }), 200
-        
+      
     except Exception as e:
         return jsonify({'error': 'Login failed'}), 500
 
+#---------------------------------------------------------------------------#
+#----------User Info Route(Frontend fetch this to get user details)----------#
+#----------------------------------------------------------------------------#
 @auth_bp.route('/me', methods=['GET'])
 @login_required
 def get_current_user():
@@ -79,7 +90,10 @@ def get_current_user():
         }), 200
     except Exception as e:
         return jsonify({'error': 'Failed to get user info'}), 500
-
+    
+#----------------------------------------------------------------------------#
+#------------Useful for checking if JWT  is still valid----------------------#
+#----------------------------------------------------------------------------#
 @auth_bp.route('/verify-token', methods=['POST'])
 @login_required
 def verify_token():

@@ -1,3 +1,6 @@
+#This is a package initializer for my app’s route modules.
+#It imports all blueprints (auth, user, admin, analytics) and stores them in a list.
+
 from .auth import auth_bp
 from .user import user_bp
 from .admin import admin_bp

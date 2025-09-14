@@ -7,12 +7,18 @@ from sqlalchemy import and_
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
+#---------------------------------------------------------------------------#
+#-------------Helper Function to handle timezone and billings---------------#
+#---------------------------------------------------------------------------#
 def ensure_timezone_aware(dt):
     """Ensure datetime is timezone-aware. If naive, assume UTC."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
 
+#---------------------------------------------------------------------------#
+#-------------Frontend Route to show logged in user details----------------#
+#---------------------------------------------------------------------------#
 @user_bp.route('/profile', methods=['GET'])
 @login_required
 def get_profile():
@@ -23,28 +29,9 @@ def get_profile():
     except Exception as e:
         return jsonify({'error': 'Failed to get profile'}), 500
 
-@user_bp.route('/profile', methods=['PUT'])
-@login_required
-def update_profile():
-    try:
-        data = request.get_json()
-        
-        if 'fullname' in data:
-            g.current_user.fullname = data['fullname']
-        if 'address' in data:
-            g.current_user.address = data['address']
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'Profile updated successfully',
-            'user': g.current_user.to_dict()
-        }), 200
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Failed to update profile'}), 500
-
+#---------------------------------------------------------------------------#
+#------------- User Dashboard Details at top bar when logged in-------------#
+#---------------------------------------------------------------------------#
 @user_bp.route('/dashboard-stats', methods=['GET'])
 @login_required
 def get_dashboard_stats():
@@ -64,7 +51,7 @@ def get_dashboard_stats():
             ReserveSpot.leaving_time.isnot(None)
         ).all()
         
-        total_spent = sum(r.cost or 0 for r in completed_reservations)
+        total_spent = sum(r.cost or 0 for r in completed_reservations) # Handle None costs added this for fallback
         
         return jsonify({
             'total_reservations': total_reservations,
@@ -76,12 +63,12 @@ def get_dashboard_stats():
     except Exception as e:
         return jsonify({'error': 'Failed to get dashboard stats'}), 500
 
-# ================ PARKING LOT DISCOVERY ================
-
+#---------------------------------------------------------------------------#
+#------------- Get all parking lots with availability information-----------#
+#---------------------------------------------------------------------------#
 @user_bp.route('/lots', methods=['GET'])
 @login_required
 def get_available_lots():
-    """Get all parking lots with availability information"""
     try:
         lots = Lot.query.all()
         lots_data = []
@@ -106,32 +93,13 @@ def get_available_lots():
     except Exception as e:
         return jsonify({'error': 'Failed to get parking lots'}), 500
 
-@user_bp.route('/lots/<int:lot_id>/spots', methods=['GET'])
-@login_required
-def get_lot_spots(lot_id):
-    """Get available spots for a specific lot"""
-    try:
-        lot = Lot.query.get_or_404(lot_id)
-        
-        available_spots = Spot.query.filter_by(
-            lot_id=lot_id, 
-            status='A'
-        ).all()
-        
-        return jsonify({
-            'lot': lot.to_dict(),
-            'available_spots': [spot.to_dict() for spot in available_spots]
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'error': 'Failed to get lot spots'}), 500
-
-# ================ PARKING SPOT BOOKING ================
+#---------------------------------------------------------------------------#
+#-------------------------------Book spot-----------------------------------#
+#---------------------------------------------------------------------------#
 
 @user_bp.route('/book-spot', methods=['POST'])
 @login_required
 def book_parking_spot():
-    """Book a parking spot with auto-allocation"""
     try:
         data = request.get_json()
         lot_id = data.get('lot_id')
@@ -139,15 +107,6 @@ def book_parking_spot():
         
         if not lot_id or not vehicle_number:
             return jsonify({'error': 'Lot ID and vehicle number are required'}), 400
-        
-        # Check if user already has an active reservation (no leaving_time means active)
-        active_reservation = ReserveSpot.query.filter_by(
-            user_id=g.current_user.id,
-            leaving_time=None
-        ).first()
-        
-        if active_reservation:
-            return jsonify({'error': 'You already have an active parking reservation'}), 400
         
         # Find an available spot in the lot (auto-allocation)
         available_spot = Spot.query.filter_by(
@@ -193,10 +152,13 @@ def book_parking_spot():
         db.session.rollback()
         return jsonify({'error': 'Failed to book parking spot'}), 500
 
+#---------------------------------------------------------------------------#
+#------------------------Release Spot-------------------------------------#
+#---------------------------------------------------------------------------#
+
 @user_bp.route('/release-spot/<int:reservation_id>', methods=['POST'])
 @login_required
 def release_parking_spot(reservation_id):
-    """Release a parking spot and calculate final cost"""
     try:
         # Get the reservation
         reservation = ReserveSpot.query.filter_by(
@@ -210,16 +172,13 @@ def release_parking_spot(reservation_id):
         
         # Calculate parking duration and cost
         now = datetime.now(timezone.utc)
-        
-        # Handle timezone-aware and timezone-naive parking_time
         parking_time = ensure_timezone_aware(reservation.parking_time)
-        
         duration_hours = (now - parking_time).total_seconds() / 3600
         
         # Get lot for pricing (need to get lot through spot relationship)
         spot = Spot.query.get(reservation.spot_id)
         lot = spot.lot
-        final_cost = max(duration_hours * lot.price, lot.price)  # Minimum 1 hour charge
+        final_cost = duration_hours * lot.price
         
         # Update reservation
         reservation.leaving_time = now
@@ -240,15 +199,17 @@ def release_parking_spot(reservation_id):
         db.session.rollback()
         return jsonify({'error': f'Failed to release parking spot: {str(e)}'}), 500
 
-# ================ BOOKING MANAGEMENT ================
+#---------------------------------------------------------------------------#
+#-----------------------Past Bookings---------------------------------------#
+#---------------------------------------------------------------------------#
 
 @user_bp.route('/reservations', methods=['GET'])
 @login_required
 def get_user_reservations():
-    """Get all reservations for the current user"""
     try:
-        reservations = ReserveSpot.query.filter_by(
-            user_id=g.current_user.id
+        reservations = ReserveSpot.query.filter(
+            ReserveSpot.user_id == g.current_user.id,
+            ReserveSpot.leaving_time.isnot(None)  # Only completed reservations
         ).order_by(ReserveSpot.parking_time.desc()).all()
         
         reservations_data = []
@@ -257,6 +218,11 @@ def get_user_reservations():
             spot = Spot.query.get(reservation.spot_id)
             lot = spot.lot
             
+            # Calculate duration for completed reservations
+            leaving_time = ensure_timezone_aware(reservation.leaving_time)
+            parking_time = ensure_timezone_aware(reservation.parking_time)
+            duration = (leaving_time - parking_time).total_seconds() / 3600
+            
             reservation_info = {
                 'id': reservation.id,
                 'lot_name': lot.name,
@@ -264,69 +230,66 @@ def get_user_reservations():
                 'spot_number': spot.spot_number,
                 'vehicle_number': reservation.vehicle_no,
                 'parking_time': reservation.parking_time.isoformat(),
-                'leaving_time': reservation.leaving_time.isoformat() if reservation.leaving_time else None,
+                'leaving_time': reservation.leaving_time.isoformat(),
                 'cost': reservation.cost,
-                'status': 'released' if reservation.leaving_time else 'active',
-                'duration_hours': None
+                'status': 'completed',  # All are completed since we filtered for leaving_time
+                'duration_hours': round(duration, 2)
             }
-            
-            # Calculate duration if completed
-            if reservation.leaving_time:
-                leaving_time = ensure_timezone_aware(reservation.leaving_time)
-                parking_time = ensure_timezone_aware(reservation.parking_time)
-                duration = (leaving_time - parking_time).total_seconds() / 3600
-                reservation_info['duration_hours'] = round(duration, 2)
             
             reservations_data.append(reservation_info)
         
         return jsonify({
-            'reservations': reservations_data
+            'reservations': reservations_data,
+            'count': len(reservations_data)
         }), 200
         
     except Exception as e:
         return jsonify({'error': 'Failed to get reservations'}), 500
 
-@user_bp.route('/current-reservation', methods=['GET'])
+#---------------------------------------------------------------------------#
+#---------------------Active Bookings---------------------------------------#
+#---------------------------------------------------------------------------#
+
+@user_bp.route('/active-bookings', methods=['GET'])
 @login_required
-def get_current_reservation():
-    """Get the current active reservation for the user"""
+def get_active_bookings():
     try:
-        reservation = ReserveSpot.query.filter_by(
+        reservations = ReserveSpot.query.filter_by(
             user_id=g.current_user.id,
-            leaving_time=None  # Active reservation has no leaving_time
-        ).first()
+            leaving_time=None  # Active reservations have no leaving_time
+        ).all()
         
-        if not reservation:
-            return jsonify({'current_reservation': None}), 200
-        
-        # Get lot through spot relationship
-        spot = Spot.query.get(reservation.spot_id)
-        lot = spot.lot
-        
-        # Calculate current duration and estimated cost
+        active_reservations = []
         now = datetime.now(timezone.utc)
         
-        # Handle timezone-aware and timezone-naive parking_time
-        parking_time = ensure_timezone_aware(reservation.parking_time)
-        
-        current_duration = (now - parking_time).total_seconds() / 3600
-        estimated_cost = max(current_duration * lot.price, lot.price)
-        
-        reservation_info = {
-            'id': reservation.id,
-            'lot_name': lot.name,
-            'lot_location': lot.prime_location_name,
-            'spot_number': spot.spot_number,
-            'vehicle_number': reservation.vehicle_no,
-            'parking_time': reservation.parking_time.isoformat(),
-            'current_duration_hours': round(current_duration, 2),
-            'estimated_cost': round(estimated_cost, 2),
-            'hourly_rate': lot.price
-        }
+        for reservation in reservations:
+            # Get lot through spot relationship
+            spot = Spot.query.get(reservation.spot_id)
+            lot = spot.lot
+            
+            # Calculate current duration and estimated cost
+            parking_time = ensure_timezone_aware(reservation.parking_time)
+            current_duration = (now - parking_time).total_seconds() / 3600
+            estimated_cost = current_duration * lot.price
+            
+            reservation_info = {
+                'id': reservation.id,
+                'lot_name': lot.name,
+                'lot_location': lot.prime_location_name,
+                'spot_number': spot.spot_number,
+                'vehicle_number': reservation.vehicle_no,
+                'parking_time': reservation.parking_time.isoformat(),
+                'current_duration_hours': round(current_duration, 2),
+                'estimated_cost': round(estimated_cost, 2),
+                'hourly_rate': lot.price
+            }
+            
+            active_reservations.append(reservation_info)
         
         return jsonify({
-            'current_reservation': reservation_info
+            'active_reservations': active_reservations,
+            'count': len(active_reservations)
         }), 200
         
     except Exception as e:
-        return jsonify({'error': 'Failed to get current reservation'}), 500
+        return jsonify({'error': 'Failed to get active reservations'}), 500

@@ -8,7 +8,7 @@ from config import Config
 from extensions import db, mail, cache, jwt
 from celery_app import make_celery
 
-# Enable cascading deletes in SQLite
+#------Enable cascading deletes in SQLite------#
 @event.listens_for(Engine, "connect")
 def enable_sqlite_fk(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, sqlite3.Connection):
@@ -46,6 +46,7 @@ def create_app():
 
 app = create_app()
 
+#--------To show if backend is running or not--------#
 @app.route('/')
 def index():
     return {
@@ -54,10 +55,7 @@ def index():
         'status': 'running'
     }
 
-@app.route('/health')
-def health():
-    return {'status': 'healthy', 'database': 'connected'}
-
+#------Admin creaation in database if not exists------#
 def create_admin():
     """Create default admin user if not exists"""
     from models import User
@@ -72,25 +70,16 @@ def create_admin():
             admin.set_password('admin')
             db.session.add(admin)
             db.session.commit()
-            print("✅ Admin user created: admin@onlypark.com / admin")
-        else:
-            print("✅ Admin user already exists")
-    except Exception as e:
-        print(f"❌ Error creating admin: {e}")
+    except Exception:
         db.session.rollback()
+
 
 if __name__ == '__main__':
     with app.app_context():
-        # Import models to register them with SQLAlchemy
-        import models
-        
-        # Create all tables
-        db.create_all()
-        print("🚀 Database tables created successfully!")
-        
-        # Create default admin
-        create_admin()
-        print("🚀 Database initialized successfully!")
-    
+        import models   # Import models to register them with SQLAlchemy
+        db.create_all()  # Create all tables
+        create_admin()   # Create default admin
+
     # Run the application
     app.run(debug=True, host='0.0.0.0', port=5000)
+

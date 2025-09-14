@@ -96,15 +96,15 @@
           </div>
         </div>
 
-        <!-- Current Reservation Section -->
-        <div v-if="currentReservation" class="current-reservation-section">
+        <!-- Active Reservations Section -->
+        <div v-if="activeReservations && activeReservations.length > 0" class="current-reservation-section">
           <div class="section-header">
             <h2>
-              <i class="bi bi-car-front-fill me-2"></i>Current Parking
+              <i class="bi bi-car-front-fill me-2"></i>Active Parking Sessions ({{ activeReservations.length }})
             </h2>
           </div>
           
-          <div class="current-reservation-card">
+          <div v-for="reservation in activeReservations" :key="reservation.id" class="current-reservation-card">
             <div class="reservation-grid">
               <!-- Location Column -->
               <div class="info-column location-column">
@@ -113,8 +113,8 @@
                   <span>Location</span>
                 </div>
                 <div class="column-content">
-                  <h3>{{ currentReservation.lot_name }}</h3>
-                  <p>{{ currentReservation.lot_location }}</p>
+                  <h3>{{ reservation.lot_name }}</h3>
+                  <p>{{ reservation.lot_location }}</p>
                 </div>
               </div>
 
@@ -127,15 +127,15 @@
                 <div class="column-content">
                   <div class="detail-row">
                     <span class="detail-label">Spot Number:</span>
-                    <span class="spot-badge">{{ currentReservation.spot_number }}</span>
+                    <span class="spot-badge">{{ reservation.spot_number }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">Vehicle:</span>
-                    <span class="vehicle-badge">{{ currentReservation.vehicle_number }}</span>
+                    <span class="vehicle-badge">{{ reservation.vehicle_number }}</span>
                   </div>
                   <div class="detail-row">
                     <span class="detail-label">Parked At:</span>
-                    <span class="time-text">{{ formatDateTime(currentReservation.parking_time) }}</span>
+                    <span class="time-text">{{ formatDateTime(reservation.parking_time) }}</span>
                   </div>
                 </div>
               </div>
@@ -148,15 +148,15 @@
                 </div>
                 <div class="column-content">
                   <div class="cost-item">
-                    <div class="cost-value">₹{{ currentReservation.estimated_cost }}</div>
+                    <div class="cost-value">₹{{ reservation.estimated_cost }}</div>
                     <div class="cost-label">Estimated Cost</div>
                   </div>
                   <div class="duration-item">
-                    <div class="duration-value">{{ currentReservation.current_duration_hours }}h</div>
+                    <div class="duration-value">{{ reservation.current_duration_hours }}h</div>
                     <div class="duration-label">Duration</div>
                   </div>
                   <div class="rate-item">
-                    <span class="rate-text">₹{{ currentReservation.hourly_rate }}/hour</span>
+                    <span class="rate-text">₹{{ reservation.hourly_rate }}/hour</span>
                   </div>
                 </div>
               </div>
@@ -168,9 +168,9 @@
                   <span>Actions</span>
                 </div>
                 <div class="column-content">
-                  <button @click="releaseSpot(currentReservation.id)" class="btn btn-release" :disabled="releasing === currentReservation.id">
+                  <button @click="releaseSpot(reservation.id)" class="btn btn-release" :disabled="releasing === reservation.id">
                     <i class="bi bi-stop-circle me-2"></i>
-                    {{ releasing === currentReservation.id ? 'Releasing...' : 'Release Spot' }}
+                    {{ releasing === reservation.id ? 'Releasing...' : 'Release Spot' }}
                   </button>
                 </div>
               </div>
@@ -239,11 +239,11 @@
               <div class="lot-actions">
                 <button 
                   @click="selectLot(lot)" 
-                  :disabled="!lot.is_available || !!currentReservation"
+                  :disabled="!lot.is_available"
                   class="btn btn-primary"
                 >
                   <i class="bi bi-plus-circle me-2"></i>
-                  {{ !lot.is_available ? 'No Spots' : (currentReservation ? 'Already Parked' : 'Book Now') }}
+                  {{ !lot.is_available ? 'No Spots Available' : 'Book Now' }}
                 </button>
               </div>
             </div>
@@ -263,12 +263,13 @@
           </div>
         </div>
 
-        <!-- Booking History Section -->
+        <!-- Past Bookings Section -->
         <div class="booking-history-section">
           <div class="section-header">
             <h2>
-              <i class="bi bi-clock-history me-2"></i>Booking History
+              <i class="bi bi-clock-history me-2"></i>Past Bookings
             </h2>
+            <p class="section-subtitle">Your completed parking sessions</p>
           </div>
 
           <div v-if="reservations && reservations.length > 0" class="history-table">
@@ -293,26 +294,11 @@
               <div class="cell">{{ reservation.vehicle_number }}</div>
               <div class="cell">{{ formatDate(reservation.parking_time) }}</div>
               <div class="cell">
-                {{ reservation.duration_hours ? reservation.duration_hours + 'h' : 'Active' }}
+                {{ reservation.duration_hours }}h
               </div>
               <div class="cell">₹{{ (reservation.cost || 0).toFixed(2) }}</div>
               <div class="cell">
-                <span 
-                  v-if="reservation.status === 'active'" 
-                  class="status-badge active-with-action"
-                >
-                  <span class="status-text">{{ reservation.status }}</span>
-                  <button 
-                    @click="releaseSpot(reservation.id)" 
-                    class="btn btn-sm btn-danger release-btn"
-                    :disabled="releasing === reservation.id"
-                    title="Release parking spot"
-                  >
-                    <i class="bi bi-stop-circle"></i>
-                    {{ releasing === reservation.id ? 'Releasing...' : 'Release' }}
-                  </button>
-                </span>
-                <span v-else class="status-badge" :class="reservation.status">
+                <span class="status-badge completed">
                   {{ reservation.status }}
                 </span>
               </div>
@@ -321,7 +307,8 @@
 
           <div v-else class="empty-history">
             <i class="bi bi-clock-history"></i>
-            <p>No booking history yet</p>
+            <p>No completed bookings yet</p>
+            <small>Your completed parking sessions will appear here</small>
           </div>
         </div>
       </div>
@@ -403,7 +390,7 @@ const releasing = ref(null) // Changed to track specific reservation ID being re
 const stats = ref(null)
 const parkingLots = ref([])
 const reservations = ref([])
-const currentReservation = ref(null)
+const activeReservations = ref([]) // Changed from currentReservation to activeReservations array
 
 // Modal and booking
 const showBookingModal = ref(false)
@@ -446,16 +433,16 @@ const loadDashboardData = async () => {
   try {
     loading.value = true
     
-    // Reset current reservation first
-    currentReservation.value = null
+    // Reset active reservations first
+    activeReservations.value = []
     
     // Load all data in parallel
     const timestamp = Date.now()
-    const [statsResponse, lotsResponse, reservationsResponse, currentResponse] = await Promise.all([
+    const [statsResponse, lotsResponse, reservationsResponse, activeResponse] = await Promise.all([
       apiService.get(`/user/dashboard-stats?t=${timestamp}`),
       apiService.get(`/user/lots?t=${timestamp}`),
       apiService.get(`/user/reservations?t=${timestamp}`),
-      apiService.get(`/user/current-reservation?t=${timestamp}`)
+      apiService.get(`/user/active-reservations?t=${timestamp}`)
     ])
     
     if (statsResponse.success) {
@@ -470,19 +457,19 @@ const loadDashboardData = async () => {
       reservations.value = reservationsResponse.data.reservations || []
     }
     
-    if (currentResponse.success && currentResponse.data && currentResponse.data.current_reservation) {
-      console.log('Current reservation API response:', currentResponse.data)
-      currentReservation.value = currentResponse.data.current_reservation
-      console.log('Set currentReservation to:', currentReservation.value)
+    if (activeResponse.success && activeResponse.data && activeResponse.data.active_reservations) {
+      console.log('Active reservations API response:', activeResponse.data)
+      activeReservations.value = activeResponse.data.active_reservations
+      console.log('Set activeReservations to:', activeReservations.value)
     } else {
-      console.log('No current reservation or API failed:', currentResponse)
-      currentReservation.value = null
+      console.log('No active reservations or API failed:', activeResponse)
+      activeReservations.value = []
     }
     
   } catch (error) {
     console.error('Failed to load dashboard:', error)
-    // Ensure currentReservation is null on error
-    currentReservation.value = null
+    // Ensure activeReservations is empty on error
+    activeReservations.value = []
   } finally {
     loading.value = false
   }
@@ -808,6 +795,13 @@ onMounted(() => {
   color: #ffffff;
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+.section-subtitle {
+  margin: 0.5rem 0 0 0;
+  color: #94a3b8;
+  font-size: 0.9rem;
+  font-weight: 400;
 }
 
 .current-reservation-card {

@@ -7,19 +7,19 @@ from collections import defaultdict
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/api/analytics')
 
+#------just for timezone handling------#
 def ensure_timezone_aware(dt):
-    """Ensure datetime is timezone-aware. If naive, assume UTC."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
 
+#--------------------------------------#
+#------ Admin Analytics(TopBar)--------#
+#--------------------------------------#
+
 @analytics_bp.route('/admin/overview', methods=['GET'])
 @admin_required
 def admin_overview():
-    """
-    Admin analytics overview
-    Why: Provides key metrics at a glance for admin dashboard
-    """
     try:
         # Total revenue
         total_revenue = db.session.query(func.sum(ReserveSpot.cost)).filter(
@@ -58,13 +58,14 @@ def admin_overview():
     except Exception as e:
         return jsonify({'error': 'Failed to get admin overview'}), 500
 
+#------------------------------------------------------#
+#------------------Admin Charts------------------------#
+#------------------------------------------------------#
+
+#------ Revenue Trends -------------------------------#
 @analytics_bp.route('/admin/revenue-trends', methods=['GET'])
 @admin_required
 def revenue_trends():
-    """
-    Revenue trends over time
-    Why: Shows revenue patterns to help admins understand business performance
-    """
     try:
         # Get date range from query params (default to last 30 days)
         days = int(request.args.get('days', 30))
@@ -104,13 +105,10 @@ def revenue_trends():
     except Exception as e:
         return jsonify({'error': 'Failed to get revenue trends'}), 500
 
+#------Lot Performance,revenue distribution,bookings distribution----------------#
 @analytics_bp.route('/admin/lot-performance', methods=['GET'])
 @admin_required
 def lot_performance():
-    """
-    Performance metrics by parking lot
-    Why: Helps admins identify which lots are most/least profitable
-    """
     try:
         lot_stats = db.session.query(
             Lot.name,
@@ -137,13 +135,10 @@ def lot_performance():
     except Exception as e:
         return jsonify({'error': 'Failed to get lot performance'}), 500
 
+#---------------Hourly Trends---------------------------#
 @analytics_bp.route('/admin/occupancy-trends', methods=['GET'])
 @admin_required
 def occupancy_trends():
-    """
-    Occupancy trends by hour of day
-    Why: Shows peak usage times to help with pricing and capacity planning
-    """
     try:
         # Get bookings with hour of day
         hourly_bookings = db.session.query(
@@ -166,13 +161,14 @@ def occupancy_trends():
     except Exception as e:
         return jsonify({'error': 'Failed to get occupancy trends'}), 500
 
+#------------------------------------------------------#
+#------------------User Charts-------------------------#
+#------------------------------------------------------#
+
+#--------------User Stats (Topbar),Month Summary---------#
 @analytics_bp.route('/user/spending-overview', methods=['GET'])
 @login_required
 def user_spending_overview():
-    """
-    User's personal spending overview
-    Why: Helps users understand their parking expenses and patterns
-    """
     try:
         user_id = g.current_user.id
         
@@ -217,13 +213,10 @@ def user_spending_overview():
     except Exception as e:
         return jsonify({'error': 'Failed to get user spending overview'}), 500
 
+#------------------Your Spending Trends--------------------#
 @analytics_bp.route('/user/spending-trends', methods=['GET'])
 @login_required
 def user_spending_trends():
-    """
-    User's spending trends over time
-    Why: Shows personal spending patterns to help users budget
-    """
     try:
         user_id = g.current_user.id
         
@@ -266,13 +259,10 @@ def user_spending_trends():
     except Exception as e:
         return jsonify({'error': 'Failed to get user spending trends'}), 500
 
+#-----Your Parking Lot Usage,Booking distribution,Revenue distribution----------#
 @analytics_bp.route('/user/lot-usage', methods=['GET'])
 @login_required
 def user_lot_usage():
-    """
-    User's usage by parking lot
-    Why: Shows which lots the user prefers and how much they spend at each
-    """
     try:
         user_id = g.current_user.id
         
