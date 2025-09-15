@@ -4,10 +4,6 @@
   </div>
 </template>
 
-<script setup>
-// Main App Component
-</script>
-
 <style>
 #app {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

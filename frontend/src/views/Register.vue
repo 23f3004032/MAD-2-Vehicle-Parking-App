@@ -126,6 +126,12 @@ import { useRouter } from 'vue-router'
 import { authService } from '@/services/auth'
 import { getUser } from '@/utils/auth'
 
+//ref → simple reactive values (loading, error).
+//reactive → reactive object (form).
+//computed → derived state, isFormValid.
+//authService → API call to backend.
+//getUser → get user data from storage.
+
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')

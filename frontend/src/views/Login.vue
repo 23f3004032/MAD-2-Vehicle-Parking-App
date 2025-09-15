@@ -1,7 +1,7 @@
 <template>
   <div class="login-page">
     <div class="login-container">
-      <!-- Left side - Branding -->
+      <!------------------------- Left side - Branding ------------------------>
       <div class="login-brand">
         <div class="brand-content">
           <router-link to="/" class="brand-title-link">
@@ -16,7 +16,7 @@
         </div>
       </div>
 
-      <!-- Right side - Login Form -->
+      <!------------------------- Right side - Login Form ------------------------->
       <div class="login-form-section">
         <div class="form-container">
           <div class="form-header">
@@ -93,6 +93,12 @@ import { useRouter } from 'vue-router'
 import { authService } from '@/services/auth'
 import { getUser } from '@/utils/auth'
 
+//ref → for simple reactive values (loading, error).
+//reactive → for objects (form).
+//useRouter → allows programmatic navigation (router.push).
+//authService → your backend API service for login.
+//getUser → fetch logged-in user info from storage (token, role, etc.).
+
 const router = useRouter()
 const loading = ref(false)
 const error = ref('')
@@ -101,6 +107,11 @@ const form = reactive({
   email: '',
   password: ''
 })
+
+//router → for page redirection.
+//loading → boolean for login progress.
+//error → string for error messages.
+//form → reactive object to store email & password input.
 
 const handleLogin = async () => {
   if (loading.value) return

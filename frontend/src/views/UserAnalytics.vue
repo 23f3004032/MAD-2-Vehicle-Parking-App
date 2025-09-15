@@ -1,6 +1,6 @@
 <template>
   <div class="user-analytics">
-    <!-- Navigation Header -->
+<!------------------ Navigation Header------------------------ -->
     <nav class="user-navbar">
       <div class="container-fluid">
         <div class="user-nav-content">
@@ -40,7 +40,8 @@
 
     <!-- Analytics Content -->
     <div v-else class="analytics-content">
-      <!-- Overview Cards -->
+
+<!----------------- Overview Cards --------------------------->
       <div class="overview-cards" v-if="overview">
         <div class="metric-card spending">
           <div class="metric-icon">
@@ -93,7 +94,7 @@
         </div>
       </div>
 
-      <!-- Charts Grid -->
+<!----------------------- Charts Grid -------------------------------->
       <div class="charts-grid">
         <!-- Spending Trends -->
         <div class="chart-section full-width">
@@ -160,60 +161,6 @@
             :labels="lotUsage.labels"
             :data="lotUsage.bookings"
           />
-        </div>
-
-        <!-- Monthly Summary -->
-        <div class="chart-section">
-          <div class="summary-card">
-            <h3>
-              <i class="bi bi-calendar-month me-2"></i>This Month Summary
-            </h3>
-            <div class="summary-stats" v-if="overview">
-              <div class="summary-item">
-                <span class="summary-label">Total Bookings:</span>
-                <span class="summary-value">{{ overview.total_bookings }}</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">Total Spent:</span>
-                <span class="summary-value">₹{{ overview.total_spent.toFixed(2) }}</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">Average per Booking:</span>
-                <span class="summary-value">₹{{ overview.avg_cost_per_booking.toFixed(2) }}</span>
-              </div>
-              <div class="summary-item">
-                <span class="summary-label">Most Used Lot:</span>
-                <span class="summary-value">{{ overview.favorite_lot || 'None yet' }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Quick Tips -->
-        <div class="chart-section">
-          <div class="tips-card">
-            <h3>
-              <i class="bi bi-lightbulb me-2"></i>Money Saving Tips
-            </h3>
-            <div class="tips-list">
-              <div class="tip-item">
-                <i class="bi bi-check-circle-fill"></i>
-                <span>Book during off-peak hours for better rates</span>
-              </div>
-              <div class="tip-item">
-                <i class="bi bi-check-circle-fill"></i>
-                <span>Use your favorite lot for loyalty benefits</span>
-              </div>
-              <div class="tip-item">
-                <i class="bi bi-check-circle-fill"></i>
-                <span>Plan shorter parking durations when possible</span>
-              </div>
-              <div class="tip-item">
-                <i class="bi bi-check-circle-fill"></i>
-                <span>Check multiple locations for better pricing</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -508,107 +455,5 @@ onMounted(() => {
 .form-select option {
   background: #1e293b;
   color: #ffffff;
-}
-
-/* Summary Card */
-.summary-card, .tips-card {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  padding: 1.5rem;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  height: 100%;
-}
-
-.summary-card h3, .tips-card h3 {
-  color: #ffffff;
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin: 0 0 1rem 0;
-  display: flex;
-  align-items: center;
-}
-
-.summary-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.summary-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.summary-item:last-child {
-  border-bottom: none;
-}
-
-.summary-label {
-  color: #94a3b8;
-  font-size: 0.9rem;
-}
-
-.summary-value {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-/* Tips Card */
-.tips-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.tip-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: #e2e8f0;
-  font-size: 0.9rem;
-}
-
-.tip-item i {
-  color: #10b981;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .analytics-content {
-    padding: 0 1rem 1rem 1rem;
-  }
-  
-  .analytics-header {
-    padding: 1rem;
-  }
-  
-  .analytics-header h1 {
-    font-size: 2rem;
-  }
-  
-  .overview-cards {
-    grid-template-columns: 1fr;
-  }
-  
-  .charts-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .section-controls {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .user-nav-content {
-    flex-direction: column;
-    gap: 1rem;
-  }
 }
 </style>

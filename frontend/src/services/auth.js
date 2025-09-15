@@ -1,3 +1,5 @@
+//frontend authentication service
+
 import api from './api'
 import { setToken, setUser, removeToken, removeUser } from '@/utils/auth'
 

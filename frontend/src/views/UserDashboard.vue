@@ -96,7 +96,7 @@
           </div>
         </div>
 
-        <!-- Active Reservations Section -->
+<!--------------- Active Reservations Section -->
         <div v-if="activeReservations && activeReservations.length > 0" class="current-reservation-section">
           <div class="section-header">
             <h2>
@@ -178,7 +178,7 @@
           </div>
         </div>
 
-        <!-- Available Parking Lots Section -->
+<!---------------- Available Parking Lots Section ----------------------------->
         <div class="parking-lots-section">
           <div class="section-header">
             <h2>
@@ -442,7 +442,7 @@ const loadDashboardData = async () => {
       apiService.get(`/user/dashboard-stats?t=${timestamp}`),
       apiService.get(`/user/lots?t=${timestamp}`),
       apiService.get(`/user/reservations?t=${timestamp}`),
-      apiService.get(`/user/active-reservations?t=${timestamp}`)
+      apiService.get(`/user/active-bookings?t=${timestamp}`)
     ])
     
     if (statsResponse.success) {

@@ -1,6 +1,6 @@
 <template>
   <div class="home-page">
-    <!-- Minimal Navigation -->
+    <!------------------------------ NavBar------------------------ -->
     <nav class="navbar navbar-expand-lg">
       <div class="container">
         <div class="navbar-brand">
@@ -20,7 +20,7 @@
       </div>
     </nav>
 
-    <!-- Hero Section -->
+    <!---------- frontend big only park and buttons below it(Hero Section) ------------->
     <section class="hero-section">
       <div class="container">
         <div class="hero-content">
@@ -55,12 +55,11 @@
   </div>
 </template>
 
-<script setup>
-// Clean landing page
-</script>
 
 <style scoped>
-/* Modern Dark Theme */
+/* ===========================
+   Base Styles for Home Page
+=========================== */
 .home-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
@@ -68,7 +67,9 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* Navigation */
+/* ===========================
+   Navigation Bar
+=========================== */
 .navbar {
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(10px);
@@ -92,7 +93,9 @@
   align-items: center;
 }
 
-/* Hero Section */
+/* ===========================
+   Hero Section
+=========================== */
 .hero-section {
   display: flex;
   align-items: center;
@@ -133,7 +136,9 @@
   flex-wrap: wrap;
 }
 
-/* Buttons */
+/* ===========================
+   Buttons (Grouped)
+=========================== */
 .btn {
   padding: 0.75rem 2rem;
   border-radius: 50px;
@@ -187,7 +192,9 @@
   font-size: 1.1rem;
 }
 
-/* Footer */
+/* ===========================
+   Footer
+=========================== */
 .footer {
   position: absolute;
   bottom: 0;
@@ -198,7 +205,9 @@
   font-size: 0.9rem;
 }
 
-/* Responsive */
+/* ===========================
+   Responsive Styles
+=========================== */
 @media (max-width: 768px) {
   .hero-title {
     font-size: 2.5rem;

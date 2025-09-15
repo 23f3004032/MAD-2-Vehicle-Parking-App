@@ -1,3 +1,4 @@
+//this is the main entry point for the frontend application and index.html mounts here
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'

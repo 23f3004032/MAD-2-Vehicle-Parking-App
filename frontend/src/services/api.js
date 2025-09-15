@@ -9,7 +9,7 @@ const api = axios.create({
   }
 })
 
-// Request interceptor to add auth token
+// Ensures all requests are authenticated automatically.
 api.interceptors.request.use(
   (config) => {
     const token = getToken()
@@ -23,7 +23,7 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle auth errors
+//Keeps app secure when token expires or is invalid.
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -37,7 +37,7 @@ api.interceptors.response.use(
 
 export default api
 
-// API Service wrapper with error handling
+//This avoids repeating try/catch everywhere in components.
 export const apiService = {
   async get(url) {
     try {

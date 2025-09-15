@@ -6,6 +6,7 @@ import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 
+//These are the public routes: Home, Login, Register.
 const routes = [
   {
     path: '/',
@@ -23,7 +24,8 @@ const routes = [
     component: Register
   },
   
-  // User routes
+
+// User routes These are user-only pages,Means you must be logged in, and role must be "user".
   {
     path: '/user/dashboard',
     name: 'UserDashboard',
@@ -37,7 +39,8 @@ const routes = [
     meta: { requiresAuth: true, role: 'user' }
   },
   
-  // Admin routes
+
+// Admin routes These are admin-only pages,Means you must be logged in, and role must be "admin".
   {
     path: '/admin/dashboard',
     name: 'AdminDashboard',
@@ -52,28 +55,33 @@ const routes = [
   }
 ]
 
+//Creates the router object with your routes + history mode
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-// Navigation guards
+//Runs before every route change, This ensures security at frontend level.
+
+//If the route requires auth and no token, redirect to /login.
+//If the route requires a certain role but user doesn’t match:
+//                        Admins → pushed to /admin/dashboard
+//                        Users → pushed to /
+//                        No role → back to login.
+
 router.beforeEach((to, from, next) => {
   const token = getToken()
   const user = getUser()
 
-  // Redirect unauthenticated users away from protected pages
   if (to.meta.requiresAuth && !token) {
     return next('/login')
   }
 
-  // Check role-based access for protected routes
   if (to.meta.role && (!user || user.role !== to.meta.role)) {
-    // If user is authenticated but wrong role, redirect to appropriate page
     if (user?.role === 'admin') {
       return next('/admin/dashboard')
     } else if (user?.role === 'user') {
-      return next('/') // Will redirect to user dashboard when it exists
+      return next('/') 
     } else {
       return next('/login')
     }

@@ -1,6 +1,6 @@
 <template>
   <div class="admin-dashboard">
-    <!-- Admin Navigation Header -->
+<!--------------- Admin Navigation Header ------------------->
     <nav class="admin-navbar">
       <div class="container-fluid">
         <div class="admin-nav-content">
@@ -99,7 +99,7 @@
           </div>
         </div>
 
-        <!-- Parking Lots Management Section -->
+<!---------------- Parking Lots Management Section ------------------>
         <div class="management-section">
           <div class="section-header">
             <h2>
@@ -110,7 +110,7 @@
             </button>
           </div>
 
-          <!-- Lots Grid -->
+      <!------------- Lots Card ------------------->
           <div class="lots-grid" v-if="lots && lots.length > 0">
             <div v-for="lot in lots" :key="lot.id" class="lot-card">
               <div class="lot-header">
@@ -165,7 +165,7 @@
           </div>
         </div>
 
-        <!-- Real-time Spots Status Section -->
+<!------------------- Real-time Spots Status Section ------------------->
         <div class="spots-status-section">
           <div class="section-header">
             <h2>
@@ -210,7 +210,7 @@
                 v-model="searchQuery"
                 type="text"
                 class="filter-input"
-                placeholder="Vehicle number or user name..."
+                placeholder="Search by vehicle no, user name, lot name, spot no, or location..."
               >
             </div>
           </div>
@@ -299,7 +299,7 @@
       </div>
     </div>
 
-    <!-- Create/Edit Lot Modal -->
+<!---------------- Create/Edit Lot Modal ------------------->
     <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModals">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -471,10 +471,17 @@ const filteredSpots = computed(() => {
   // Search by vehicle number or user name
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(spot => 
-      (spot.vehicle_number && spot.vehicle_number.toLowerCase().includes(query)) ||
-      (spot.user_name && spot.user_name.toLowerCase().includes(query))
-    )
+    filtered = filtered.filter(spot => {
+      // Search in vehicle number (only for occupied spots)
+      if (spot.vehicle_number && spot.vehicle_number.toLowerCase().includes(query)) {
+        return true
+      }
+      
+      // Search in user name (only for occupied spots)
+      if (spot.user_name && spot.user_name.toLowerCase().includes(query)) {
+        return true
+      }
+    })
   }
 
   return filtered
@@ -1377,10 +1384,6 @@ onMounted(() => {
   background: rgba(16, 185, 129, 0.2);
   color: #34d399;
   border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.spot-details {
-  space-y: 0.75rem;
 }
 
 .spot-details p {
