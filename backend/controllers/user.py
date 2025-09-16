@@ -4,6 +4,7 @@ from extensions import cache
 from decorators import login_required
 from datetime import datetime, timezone
 from sqlalchemy import and_
+from tasks import export_user_data_csv
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
@@ -293,3 +294,71 @@ def get_active_bookings():
         
     except Exception as e:
         return jsonify({'error': 'Failed to get active reservations'}), 500
+
+#---------------------------------------------------------------------------#
+#-------------CSV Export Endpoint - Trigger async CSV generation-----------#
+#---------------------------------------------------------------------------#
+@user_bp.route('/export-data', methods=['POST'])
+@login_required
+def export_user_data():
+    """Trigger CSV export for the current user"""
+    try:
+        user_id = g.current_user.id
+        
+        # Get export type from request (optional)
+        data = request.get_json()
+        export_type = data.get('export_type', 'all') if data else 'all'
+        
+        # Trigger the Celery task
+        task = export_user_data_csv.delay(user_id, export_type)
+        
+        return jsonify({
+            'message': 'Data export initiated successfully',
+            'task_id': task.id,
+            'status': 'processing',
+            'email': g.current_user.email,
+            'info': 'You will receive an email with your data export shortly'
+        }), 202  # 202 Accepted - request has been accepted for processing
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to initiate export: {str(e)}'}), 500
+
+#---------------------------------------------------------------------------#
+#-------------Check Export Status - Check Celery task status---------------#
+#---------------------------------------------------------------------------#
+@user_bp.route('/export-status/<task_id>', methods=['GET'])
+@login_required
+def check_export_status(task_id):
+    """Check the status of a CSV export task"""
+    try:
+        from celery_app import celery
+        
+        task = celery.AsyncResult(task_id)
+        
+        if task.state == 'PENDING':
+            response = {
+                'status': 'pending',
+                'message': 'Export is being processed...'
+            }
+        elif task.state == 'SUCCESS':
+            response = {
+                'status': 'completed',
+                'message': 'Export completed successfully',
+                'result': task.result
+            }
+        elif task.state == 'FAILURE':
+            response = {
+                'status': 'failed',
+                'message': 'Export failed',
+                'error': str(task.info)
+            }
+        else:
+            response = {
+                'status': task.state,
+                'message': f'Export status: {task.state}'
+            }
+        
+        return jsonify(response), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to check export status: {str(e)}'}), 500

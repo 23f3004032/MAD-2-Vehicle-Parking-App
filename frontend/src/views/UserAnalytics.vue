@@ -26,10 +26,28 @@
 
     <!-- Page Header -->
     <div class="analytics-header">
-      <h1>
-        <i class="bi bi-graph-up me-3"></i>My Parking Analytics
-      </h1>
-      <p>Insights into your parking habits and spending patterns</p>
+      <div class="header-content">
+        <div class="header-text">
+          <h1>
+            <i class="bi bi-graph-up me-3"></i>My Parking Analytics
+          </h1>
+          <p>Insights into your parking habits and spending patterns</p>
+        </div>
+        <div class="header-actions">
+          <button 
+            @click="initiateExport" 
+            :disabled="exportLoading"
+            class="btn btn-export"
+            :class="{ 'loading': exportLoading }"
+          >
+            <i v-if="!exportLoading" class="bi bi-download me-2"></i>
+            <div v-else class="spinner-border spinner-border-sm me-2" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            {{ exportLoading ? 'Generating...' : 'Export Data' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Loading State -->
@@ -186,6 +204,9 @@ const spendingTrends = ref(null)
 const lotUsage = ref(null)
 const spendingPeriod = ref(30)
 
+// Export functionality
+const exportLoading = ref(false)
+
 // Methods
 const loadOverview = async () => {
   try {
@@ -230,6 +251,27 @@ const loadAllData = async () => {
     ])
   } finally {
     loading.value = false
+  }
+}
+
+// Export functionality
+const initiateExport = async () => {
+  try {
+    exportLoading.value = true
+    
+    const response = await apiService.exportData('all')
+    
+    if (response.success) {
+      alert('✅ Export initiated successfully! You will receive an email with your data shortly.')
+    } else {
+      alert(`❌ ${response.error || 'Failed to initiate export'}`)
+    }
+    
+  } catch (error) {
+    console.error('Export error:', error)
+    alert('❌ An unexpected error occurred while initiating export')
+  } finally {
+    exportLoading.value = false
   }
 }
 
@@ -306,7 +348,23 @@ onMounted(() => {
 
 .analytics-header {
   padding: 2rem;
-  text-align: center;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-text {
+  text-align: left;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
 }
 
 .analytics-header h1 {
@@ -324,6 +382,55 @@ onMounted(() => {
   color: #94a3b8;
   font-size: 1.1rem;
   margin: 0;
+}
+
+/* Export Button */
+.btn-export {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.btn-export:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+}
+
+.btn-export:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-export.loading {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+/* Responsive header */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .header-text {
+    text-align: center;
+  }
+  
+  .analytics-header h1 {
+    font-size: 2rem;
+  }
 }
 
 .loading-state {

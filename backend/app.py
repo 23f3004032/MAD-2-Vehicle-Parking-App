@@ -4,9 +4,12 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 import sqlite3
 import os
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 from config import Config
 from extensions import db, mail, cache, jwt
 from celery_app import make_celery
+
 
 #------Enable cascading deletes in SQLite------#
 @event.listens_for(Engine, "connect")

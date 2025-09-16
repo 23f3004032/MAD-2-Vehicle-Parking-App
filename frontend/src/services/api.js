@@ -85,5 +85,30 @@ export const apiService = {
         error: error.response?.data?.error || 'Request failed' 
       }
     }
+  },
+
+  // Export data functionality
+  async exportData(exportType = 'all') {
+    try {
+      const response = await api.post('/user/export-data', { export_type: exportType })
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Export request failed' 
+      }
+    }
+  },
+
+  async checkExportStatus(taskId) {
+    try {
+      const response = await api.get(`/user/export-status/${taskId}`)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Status check failed' 
+      }
+    }
   }
 }

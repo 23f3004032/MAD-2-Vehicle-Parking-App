@@ -1,6 +1,11 @@
 import os
+import pytz
 from celery.schedules import crontab
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_path = os.path.join(basedir, 'app.db')
@@ -19,19 +24,30 @@ class Config:
     CACHE_DEFAULT_TIMEOUT = 300
     
     # Celery Configuration
-    CELERY_BROKER_URL = 'redis://localhost:6379/1'
-    CELERY_RESULT_BACKEND = 'redis://localhost:6379/2'
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'
+    CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
     CELERY_TIMEZONE = 'Asia/Kolkata'
     CELERY_ENABLE_UTC = False
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_RESULT_EXPIRES = 3600  # Results expire after 1 hour
+    CELERY_TASK_TRACK_STARTED = True
+    CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
+    
+    # For demo/development - execute tasks immediately if Redis not available
+    # Note: Set CELERY_EAGER=False in .env for Beat scheduling to work
+    CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_EAGER', 'False').lower() == 'true'
+    CELERY_TASK_EAGER_PROPAGATES = True
     
     # Email Configuration
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME') or 'your-email@gmail.com'
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD') or 'your-app-password'
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_USERNAME') or 'your-email@gmail.com'
-    
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', 'onlyparks19@gmail.com')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', 'eojw fehb wkov myuc')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'onlyparks19@gmail.com')
+
     # Export Directory
     EXPORT_DIR = os.path.join(basedir, 'exports')
     
@@ -39,10 +55,10 @@ class Config:
     CELERY_BEAT_SCHEDULE = {
         'daily-reminder-job': {
             'task': 'tasks.send_daily_reminders',
-            'schedule': crontab(hour=18, minute=0),  # 6 PM every day
+            'schedule': crontab(hour=3, minute=52),  # 3:48 AM (1 minute from now)
         },
         'monthly-report-job': {
             'task': 'tasks.generate_all_monthly_reports',
-            'schedule': crontab(hour=1, minute=0, day_of_month='1'),  # 1st of every month
+            'schedule': crontab(hour=3, minute=53),  # 3:49 AM (2 minutes from now)
         },
     }

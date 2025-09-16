@@ -29,10 +29,55 @@
       <div class="container-fluid">
         <!-- Dashboard Header -->
         <div class="dashboard-header">
-          <h1 class="dashboard-title">
-            <i class="bi bi-speedometer2 me-3"></i>My Parking Dashboard
-          </h1>
-          <p class="dashboard-subtitle">Find and book parking spots easily</p>
+          <div class="header-content">
+            <div class="header-text">
+              <h1 class="dashboard-title">
+                <i class="bi bi-speedometer2 me-3"></i>My Parking Dashboard
+              </h1>
+              <p class="dashboard-subtitle">Find and book parking spots easily</p>
+            </div>
+            <div class="header-actions">
+              <button 
+                @click="initiateExport" 
+                :disabled="exportLoading"
+                class="btn btn-export"
+                :class="{ 'loading': exportLoading }"
+              >
+                <i v-if="!exportLoading" class="bi bi-download me-2"></i>
+                <div v-else class="spinner-border spinner-border-sm me-2" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                {{ exportLoading ? 'Generating...' : 'Export Data' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Export Status Notification -->
+        <div v-if="exportStatus" class="export-notification" :class="exportStatus">
+          <div class="notification-content">
+            <i v-if="exportStatus === 'processing'" class="bi bi-clock-history me-2"></i>
+            <i v-if="exportStatus === 'completed'" class="bi bi-check-circle-fill me-2"></i>
+            <i v-if="exportStatus === 'failed'" class="bi bi-exclamation-triangle-fill me-2"></i>
+            <i v-if="exportStatus === 'timeout'" class="bi bi-info-circle-fill me-2"></i>
+            
+            <span v-if="exportStatus === 'processing'">
+              Export in progress... You will receive an email when ready.
+            </span>
+            <span v-if="exportStatus === 'completed'">
+              Export completed! Check your email for the CSV file.
+            </span>
+            <span v-if="exportStatus === 'failed'">
+              Export failed. Please try again.
+            </span>
+            <span v-if="exportStatus === 'timeout'">
+              Export is taking longer than expected. You will receive an email when ready.
+            </span>
+            
+            <button @click="exportStatus = null" class="close-notification">
+              <i class="bi bi-x"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Navigation Tabs -->
@@ -392,6 +437,11 @@ const parkingLots = ref([])
 const reservations = ref([])
 const activeReservations = ref([]) // Changed from currentReservation to activeReservations array
 
+// Export functionality
+const exportLoading = ref(false)
+const exportStatus = ref(null)
+const currentTaskId = ref(null)
+
 // Modal and booking
 const showBookingModal = ref(false)
 const selectedLot = ref(null)
@@ -559,6 +609,86 @@ const releaseSpot = async (reservationId) => {
   }
 }
 
+// Export functionality
+const initiateExport = async () => {
+  try {
+    exportLoading.value = true
+    exportStatus.value = null
+    
+    const response = await apiService.exportData('all')
+    
+    if (response.success) {
+      currentTaskId.value = response.data.task_id
+      exportStatus.value = 'processing'
+      
+      // Show success message
+      showNotification('Export initiated successfully! You will receive an email with your data shortly.', 'success')
+      
+      // Optionally poll for status updates
+      pollExportStatus(response.data.task_id)
+      
+    } else {
+      showNotification(response.error || 'Failed to initiate export', 'error')
+    }
+    
+  } catch (error) {
+    console.error('Export error:', error)
+    showNotification('An unexpected error occurred while initiating export', 'error')
+  } finally {
+    exportLoading.value = false
+  }
+}
+
+const pollExportStatus = async (taskId) => {
+  let attempts = 0
+  const maxAttempts = 10
+  
+  const checkStatus = async () => {
+    try {
+      const response = await apiService.checkExportStatus(taskId)
+      
+      if (response.success) {
+        const status = response.data.status
+        
+        if (status === 'completed') {
+          exportStatus.value = 'completed'
+          showNotification('Export completed! Check your email for the CSV file.', 'success')
+          return
+        } else if (status === 'failed') {
+          exportStatus.value = 'failed'
+          showNotification('Export failed. Please try again.', 'error')
+          return
+        }
+        
+        // If still processing and we haven't reached max attempts, check again
+        if (attempts < maxAttempts && status === 'pending') {
+          attempts++
+          setTimeout(checkStatus, 3000) // Check again in 3 seconds
+        } else if (attempts >= maxAttempts) {
+          exportStatus.value = 'timeout'
+          showNotification('Export is taking longer than expected. You will receive an email when it\'s ready.', 'info')
+        }
+      }
+    } catch (error) {
+      console.error('Status check error:', error)
+    }
+  }
+  
+  // Start checking after 2 seconds
+  setTimeout(checkStatus, 2000)
+}
+
+const showNotification = (message, type = 'info') => {
+  // Simple alert for now - you can replace with a proper notification system
+  if (type === 'error') {
+    alert(`❌ ${message}`)
+  } else if (type === 'success') {
+    alert(`✅ ${message}`)
+  } else {
+    alert(`ℹ️ ${message}`)
+  }
+}
+
 const formatDateTime = (timestamp) => {
   return new Date(timestamp).toLocaleString()
 }
@@ -648,8 +778,25 @@ onMounted(() => {
 
 /* Dashboard Header */
 .dashboard-header {
-  text-align: center;
   margin-bottom: 3rem;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.header-text {
+  text-align: left;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
 }
 
 .dashboard-title {
@@ -666,6 +813,115 @@ onMounted(() => {
   font-size: 1.1rem;
   color: #94a3b8;
   margin: 0;
+}
+
+/* Export Button */
+.btn-export {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.btn-export:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+
+.btn-export:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-export.loading {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+/* Responsive header */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  
+  .header-text {
+    text-align: center;
+  }
+  
+  .dashboard-title {
+    font-size: 2rem;
+  }
+}
+
+/* Export Notification */
+.export-notification {
+  max-width: 1200px;
+  margin: 0 auto 2rem auto;
+  padding: 0 1rem;
+}
+
+.notification-content {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  backdrop-filter: blur(10px);
+}
+
+.export-notification.processing .notification-content {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+.export-notification.completed .notification-content {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.export-notification.failed .notification-content {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.export-notification.timeout .notification-content {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+.close-notification {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  position: absolute;
+  right: 1rem;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.close-notification:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 /* Navigation Tabs */
