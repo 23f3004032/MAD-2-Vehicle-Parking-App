@@ -610,30 +610,76 @@ const releaseSpot = async (reservationId) => {
 }
 
 // Export functionality
-const initiateExport = async () => {
-  try {
-    exportLoading.value = true
-    exportStatus.value = null
+const pollExportStatus = (taskId) => {
+  let pollCount = 0;
+  const maxPolls = 120; // 10 minutes max (120 * 5 seconds)
+  
+  const intervalId = setInterval(async () => {
+    pollCount++;
     
-    const response = await apiService.exportData('all')
-    
-    if (response.success) {
-      currentTaskId.value = response.data.task_id
-      exportStatus.value = 'processing'
-      
-      // Single simple message
-      alert('✅ Export initiated! You will receive your data via email shortly.')
-      
-    } else {
-      alert(`❌ ${response.error || 'Failed to initiate export'}`)
+    // Add timeout protection
+    if (pollCount > maxPolls) {
+      clearInterval(intervalId);
+      exportLoading.value = false;
+      exportStatus.value = 'timeout';
+      console.error('Export polling timeout');
+      return;
     }
-    
+
+    try {
+      const statusResponse = await apiService.checkExportStatus(taskId);
+      
+      if (statusResponse.success) {
+        const status = statusResponse.data.status;
+        
+        if (status === 'completed') {
+          clearInterval(intervalId);
+          exportLoading.value = false;
+          exportStatus.value = 'completed';
+        } else if (status === 'failed') {
+          clearInterval(intervalId);
+          exportLoading.value = false;
+          exportStatus.value = 'failed';
+        }
+        // If status is 'pending' or 'processing', do nothing and let the timer run again
+      } else {
+        clearInterval(intervalId);
+        exportLoading.value = false;
+        exportStatus.value = 'failed';
+      }
+    } catch (error) {
+      console.error('Polling error:', error);
+      clearInterval(intervalId);
+      exportLoading.value = false;
+      exportStatus.value = 'failed';
+    }
+  }, 5000); // Check status every 5 seconds
+};
+
+const initiateExport = async () => {
+  exportLoading.value = true;
+  exportStatus.value = 'processing'; // Show the "in progress" message right away
+  currentTaskId.value = null;
+
+  try {
+    const response = await apiService.post('/user/export-data', {});
+
+    if (response.success && response.data.task_id) {
+      currentTaskId.value = response.data.task_id;
+      // Instead of an alert, we now start the polling function
+      pollExportStatus(currentTaskId.value);
+    } else {
+      // This handles if the backend fails to even start the job
+      exportStatus.value = 'failed';
+      exportLoading.value = false;
+    }
   } catch (error) {
-    console.error('Export error:', error)
-    alert('❌ An unexpected error occurred while initiating export')
-  } finally {
-    exportLoading.value = false
+    console.error('Export error:', error);
+    exportStatus.value = 'failed';
+    exportLoading.value = false;
   }
+  // The 'finally' block that set loading to false has been removed.
+  // The loading state is now controlled by the pollExportStatus function.
 }
 
 // Removed complex polling logic - user will just get email notification

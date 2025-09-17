@@ -59,85 +59,83 @@ def create_email_template(subject, body_content, user_name="User"):
 #----------Daily Reminder Task----------#
 @celery.task
 def send_daily_reminders():
-    """Send daily parking reminders to users with active bookings"""
+    """
+    Sends daily reminders based on project requirements, using IST for all time calculations.
+    Priority 1: If new lots were created in the last 24 hours, notify ALL users.
+    Priority 2: If no new lots, notify users who haven't parked in 7+ days.
+    """
     try:
-        # Get all users with active reservations (no leaving_time)
-        active_reservations = ReserveSpot.query.filter(
-            ReserveSpot.leaving_time.is_(None)
-        ).all()
-        
-        if not active_reservations:
-            return "No active reservations found"
-        
-        # Group by user to send one email per user
-        user_reservations = {}
-        for reservation in active_reservations:
-            user_id = reservation.user_id
-            if user_id not in user_reservations:
-                user_reservations[user_id] = []
-            user_reservations[user_id].append(reservation)
-        
-        emails_sent = 0
-        
-        for user_id, reservations in user_reservations.items():
-            user = User.query.get(user_id)
-            if not user or not user.email:
-                continue
+        # --- Priority 1: Check for newly created lots in the last 24 hours ---
+        yesterday = get_india_time() - timedelta(days=1)
+        new_lots = Lot.query.filter(Lot.created_at >= yesterday).all()
+
+        if new_lots:
+            print(f"Found {len(new_lots)} new lots. Notifying all users.")
+            all_users = User.query.filter_by(role='user').all()
             
-            # Create reminder content
-            reservation_details = ""
-            total_estimated_cost = 0
-            
-            for reservation in reservations:
-                spot = Spot.query.get(reservation.spot_id)
-                if not spot:
-                    continue
-                lot = spot.lot
-                
-                # Calculate current parking duration
-                now = get_india_time()
-                parking_time = to_india_time(reservation.parking_time)
-                
-                duration_hours = (now - parking_time).total_seconds() / 3600
-                estimated_cost = duration_hours * lot.price
-                total_estimated_cost += estimated_cost
-                
-                reservation_details += f"""
-                <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                    <h3>🚗 {reservation.vehicle_no}</h3>
-                    <p><strong>Location:</strong> {lot.name} - {lot.prime_location_name}</p>
-                    <p><strong>Spot:</strong> {spot.spot_number}</p>
-                    <p><strong>Parked Since:</strong> {parking_time.strftime('%Y-%m-%d %H:%M IST')}</p>
-                    <p><strong>Duration:</strong> {duration_hours:.1f} hours</p>
-                    <p><strong>Current Cost:</strong> ₹{estimated_cost:.2f}</p>
-                </div>
-                """
+            new_lots_html = "<ul>"
+            for lot in new_lots:
+                new_lots_html += f"<li><strong>{lot.name}</strong> at {lot.prime_location_name} (₹{lot.price}/hour)</li>"
+            new_lots_html += "</ul>"
             
             body_content = f"""
-            <p>You have <strong>{len(reservations)}</strong> active parking reservation(s):</p>
-            {reservation_details}
-            <div style="background: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-                <h3>💰 Total Estimated Cost: ₹{total_estimated_cost:.2f}</h3>
-            </div>
-            <p style="color: #ff6b35;"><strong>Reminder:</strong> Don't forget to release your parking spot when you leave to avoid additional charges!</p>
-            <p>You can manage your bookings through the OnlyPark app.</p>
+            <p>Great news! We've just added some new parking locations for you to check out:</p>
+            {new_lots_html}
+            <p>Why not book a spot for your next visit? We're ready when you are!</p>
             """
             
-            # Create and send email
-            html_content = create_email_template("Daily Parking Reminder", body_content, user.fullname)
+            emails_sent = 0
+            for user in all_users:
+                html_content = create_email_template("New Parking Lots Available!", body_content, user.fullname)
+                msg = Message(
+                    subject="OnlyPark - ✨ New Parking Lots Added!",
+                    recipients=[user.email],
+                    html=html_content
+                )
+                mail.send(msg)
+                emails_sent += 1
             
-            msg = Message(
-                subject="OnlyPark - Daily Parking Reminder",
-                recipients=[user.email],
-                html=html_content
-            )
+            return f"Notified {emails_sent} users about {len(new_lots)} new lots."
+
+        # --- Priority 2: If no new lots, check for inactive users ---
+        else:
+            print("No new lots found. Checking for inactive users...")
             
-            mail.send(msg)
-            emails_sent += 1
-        
-        return f"Daily reminders sent to {emails_sent} users with {len(active_reservations)} active reservations"
-        
+            seven_days_ago = get_india_time() - timedelta(days=7)  # CORRECTED: Using IST
+            
+            recent_user_ids = db.session.query(ReserveSpot.user_id)\
+                .filter(ReserveSpot.parking_time >= seven_days_ago)\
+                .distinct()
+
+            inactive_users = User.query.filter(User.role == 'user', User.id.notin_(recent_user_ids)).all()
+
+            if not inactive_users:
+                print("No inactive users to notify.")
+                return "No new lots or inactive users to notify today."
+
+            print(f"Found {len(inactive_users)} inactive users. Sending reminders.")
+            
+            body_content = """
+            <p>We've noticed you haven't parked with us in a while. We miss you!</p>
+            <p>Planning a trip soon? Remember to use OnlyPark to find and book your spot hassle-free. We have plenty of available spaces waiting for you.</p>
+            <p>We hope to see you soon!</p>
+            """
+
+            emails_sent = 0
+            for user in inactive_users:
+                html_content = create_email_template("We Miss You at OnlyPark!", body_content, user.fullname)
+                msg = Message(
+                    subject="OnlyPark - Your Next Parking Spot Awaits!",
+                    recipients=[user.email],
+                    html=html_content
+                )
+                mail.send(msg)
+                emails_sent += 1
+            
+            return f"Sent re-engagement reminders to {emails_sent} inactive users."
+
     except Exception as e:
+        print(f"Error in daily reminder task: {e}")
         return f"Error sending daily reminders: {str(e)}"
 
 #----------Monthly Report Task----------#

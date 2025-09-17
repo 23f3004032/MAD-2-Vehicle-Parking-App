@@ -37,6 +37,7 @@ class Lot(db.Model):
     price = db.Column(db.Float, nullable=False)
     pincode = db.Column(db.Integer, nullable=False)
     no_of_spots = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationships
     spots = db.relationship('Spot', back_populates='lot', cascade="all, delete-orphan", passive_deletes=True)
