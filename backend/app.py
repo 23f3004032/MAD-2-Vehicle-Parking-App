@@ -48,6 +48,7 @@ def create_app():
     return app
 
 app = create_app()
+from extensions import celery 
 
 #--------To show if backend is running or not--------#
 @app.route('/')

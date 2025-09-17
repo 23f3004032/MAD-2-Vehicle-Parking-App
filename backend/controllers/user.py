@@ -309,8 +309,13 @@ def export_user_data():
         data = request.get_json()
         export_type = data.get('export_type', 'all') if data else 'all'
         
+        # Make sure the task is properly imported
+        from tasks import export_user_data_csv
+        
         # Trigger the Celery task
         task = export_user_data_csv.delay(user_id, export_type)
+        
+        print(f"Export task initiated for user {user_id}, task_id: {task.id}")  # Add logging
         
         return jsonify({
             'message': 'Data export initiated successfully',
@@ -321,6 +326,7 @@ def export_user_data():
         }), 202  # 202 Accepted - request has been accepted for processing
         
     except Exception as e:
+        print(f"Export error: {str(e)}")  # Add logging
         return jsonify({'error': f'Failed to initiate export: {str(e)}'}), 500
 
 #---------------------------------------------------------------------------#

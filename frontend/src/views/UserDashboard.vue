@@ -621,65 +621,25 @@ const initiateExport = async () => {
       currentTaskId.value = response.data.task_id
       exportStatus.value = 'processing'
       
-      // Show success message
-      showNotification('Export initiated successfully! You will receive an email with your data shortly.', 'success')
-      
-      // Optionally poll for status updates
-      pollExportStatus(response.data.task_id)
+      // Single simple message
+      alert('✅ Export initiated! You will receive your data via email shortly.')
       
     } else {
-      showNotification(response.error || 'Failed to initiate export', 'error')
+      alert(`❌ ${response.error || 'Failed to initiate export'}`)
     }
     
   } catch (error) {
     console.error('Export error:', error)
-    showNotification('An unexpected error occurred while initiating export', 'error')
+    alert('❌ An unexpected error occurred while initiating export')
   } finally {
     exportLoading.value = false
   }
 }
 
-const pollExportStatus = async (taskId) => {
-  let attempts = 0
-  const maxAttempts = 10
-  
-  const checkStatus = async () => {
-    try {
-      const response = await apiService.checkExportStatus(taskId)
-      
-      if (response.success) {
-        const status = response.data.status
-        
-        if (status === 'completed') {
-          exportStatus.value = 'completed'
-          showNotification('Export completed! Check your email for the CSV file.', 'success')
-          return
-        } else if (status === 'failed') {
-          exportStatus.value = 'failed'
-          showNotification('Export failed. Please try again.', 'error')
-          return
-        }
-        
-        // If still processing and we haven't reached max attempts, check again
-        if (attempts < maxAttempts && status === 'pending') {
-          attempts++
-          setTimeout(checkStatus, 3000) // Check again in 3 seconds
-        } else if (attempts >= maxAttempts) {
-          exportStatus.value = 'timeout'
-          showNotification('Export is taking longer than expected. You will receive an email when it\'s ready.', 'info')
-        }
-      }
-    } catch (error) {
-      console.error('Status check error:', error)
-    }
-  }
-  
-  // Start checking after 2 seconds
-  setTimeout(checkStatus, 2000)
-}
+// Removed complex polling logic - user will just get email notification
 
 const showNotification = (message, type = 'info') => {
-  // Simple alert for now - you can replace with a proper notification system
+  // Simple alerts for now
   if (type === 'error') {
     alert(`❌ ${message}`)
   } else if (type === 'success') {

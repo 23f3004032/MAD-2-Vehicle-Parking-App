@@ -55,10 +55,10 @@ class Config:
     CELERY_BEAT_SCHEDULE = {
         'daily-reminder-job': {
             'task': 'tasks.send_daily_reminders',
-            'schedule': crontab(hour=3, minute=52),  # 3:48 AM (1 minute from now)
+            'schedule': crontab(hour=6, minute=0),  # Every day at 6:00 AM
         },
         'monthly-report-job': {
             'task': 'tasks.generate_all_monthly_reports',
-            'schedule': crontab(hour=3, minute=53),  # 3:49 AM (2 minutes from now)
+            'schedule': crontab(day_of_month='1', hour=1, minute=0),  # Every month at 1 AM
         },
     }

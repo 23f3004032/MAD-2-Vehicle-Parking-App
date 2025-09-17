@@ -11,16 +11,3 @@ from app import app
 
 # Import all tasks to ensure they are registered with Celery
 import tasks
-
-# Configure Celery worker
-if __name__ == '__main__':
-    # Set up proper logging
-    import logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    
-    # Start the worker with proper configuration
-    with app.app_context():
-        celery.start()

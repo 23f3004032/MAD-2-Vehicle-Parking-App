@@ -20,7 +20,6 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password, password)
     
-#----------This is just for clean JSON responses----------#
     def to_dict(self):
         return {
             'id': self.id,
@@ -41,8 +40,7 @@ class Lot(db.Model):
     
     # Relationships
     spots = db.relationship('Spot', back_populates='lot', cascade="all, delete-orphan", passive_deletes=True)
-
- #----------This is just for clean JSON responses----------#   
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -66,8 +64,7 @@ class Spot(db.Model):
     # Relationships
     lot = db.relationship('Lot', back_populates='spots')
     reserved_spots = db.relationship('ReserveSpot', back_populates='spot', cascade="all, delete-orphan", passive_deletes=True)
-
-#----------This is just for clean JSON responses----------# 
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -92,7 +89,6 @@ class ReserveSpot(db.Model):
     spot = db.relationship('Spot', back_populates='reserved_spots')
     user = db.relationship('User', back_populates='reserved_spots')
     
-#----------This is just for clean JSON responses----------#
     def to_dict(self):
         return {
             'id': self.id,
