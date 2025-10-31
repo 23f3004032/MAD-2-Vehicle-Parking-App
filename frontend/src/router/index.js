@@ -1,12 +1,22 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { getToken, getUser } from '@/utils/auth'
+//==============================================================================
+//                           ONLYPARK ROUTING CONFIGURATION
+//                          Navigation & Route Protection
+//==============================================================================
+// Description: Defines all the pages/routes in our app and navigation rules
+// Features: Route guards, authentication checks, role-based access
+// Purpose: Controls which pages users can visit based on login status
+//==============================================================================
 
-// Import views
+import { createRouter, createWebHistory } from 'vue-router'
+import { getToken, getUser } from '@/utils/auth'  // Authentication helpers
+
+//------Import all page components------//
 import Home from '@/views/Home.vue'
 import Login from '@/views/Login.vue'
 import Register from '@/views/Register.vue'
 
-//These are the public routes: Home, Login, Register.
+//=============================== PUBLIC ROUTES ===============================/
+// These pages can be accessed without logging in
 const routes = [
   {
     path: '/',

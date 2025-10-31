@@ -1,6 +1,16 @@
+#==============================================================================
+#                           CELERY CONFIGURATION
+#                         Background Task Processing Setup
+#==============================================================================
+# Description: Celery configuration for background tasks and scheduling
+# Features: Redis broker, task serialization, beat scheduling, timezone setup
+# Usage: Background tasks like email sending and scheduled reminders
+#==============================================================================
+
 from flask import Flask
 from extensions import celery
 
+#------Configure Celery with Flask app settings------#
 def make_celery(app):
     celery.conf.update({
         'broker_url': app.config['CELERY_BROKER_URL'],

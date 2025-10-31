@@ -1,3 +1,12 @@
+#==============================================================================
+#                              ONLYPARK MAIN APP
+#                         Flask Application Entry Point
+#==============================================================================
+# Description: Main Flask application setup with all configurations
+# Features: Database setup, JWT auth, CORS, background tasks, API routes
+# Purpose: This is where everything starts - the heart of our parking app
+#==============================================================================
+
 from flask import Flask
 from flask_cors import CORS
 from sqlalchemy import event
@@ -5,7 +14,10 @@ from sqlalchemy.engine import Engine
 import sqlite3
 import os
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file
+
+#------Load environment variables for security------#
+load_dotenv()  # This loads our secrets from .env file
+
 from config import Config
 from extensions import db, mail, cache, jwt
 from celery_app import make_celery

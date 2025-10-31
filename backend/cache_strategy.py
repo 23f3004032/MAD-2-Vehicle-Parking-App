@@ -2,7 +2,6 @@
 #                           REDIS CACHING STRATEGY
 #                         Performance Optimization Framework
 #==============================================================================
-# Author: Student
 # Description: Comprehensive Redis caching system for OnlyPark application
 # Features: Smart decorators, cache invalidation, performance monitoring
 # Benefits: 60-90% faster response times, reduced database load

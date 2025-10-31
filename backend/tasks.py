@@ -2,7 +2,6 @@
 #                           CELERY BACKGROUND TASKS
 #                         Email Notifications & Data Export
 #==============================================================================
-# Author: Student
 # Description: Background tasks for email reminders, monthly reports, CSV export
 # Features: Daily reminders, monthly reports, CSV export with email attachments
 # Scheduling: Managed by Celery Beat with IST timezone support

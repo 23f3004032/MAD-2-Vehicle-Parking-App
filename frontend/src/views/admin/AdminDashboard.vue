@@ -1,6 +1,18 @@
+<!--
+==============================================================================
+                              ADMIN DASHBOARD
+                          Administrative Control Panel
+==============================================================================
+Description: Complete admin interface for managing the parking system
+Features: User management, parking lot management, analytics, system monitoring
+Access: Admin role required - full control over the platform
+==============================================================================
+-->
+
 <template>
   <div class="admin-dashboard">
-<!--------------- Admin Navigation Header ------------------->
+    
+    <!-- Admin navigation bar with admin badge and controls -->
     <nav class="admin-navbar">
       <div class="container-fluid">
         <div class="admin-nav-content">

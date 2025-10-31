@@ -2,7 +2,6 @@
 #                           ONLYPARK CONFIGURATION
 #                         Application Settings & Environment
 #==============================================================================
-# Author: Student
 # Description: Configuration settings for database, cache, email, and Celery
 # Features: Redis cache, Gmail SMTP, Celery scheduling, JWT authentication
 #==============================================================================

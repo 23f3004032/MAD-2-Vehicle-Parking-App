@@ -1,9 +1,23 @@
+<!--
+==============================================================================
+                           DOUGHNUT CHART COMPONENT
+                          Reusable Chart.js Doughnut Chart
+==============================================================================
+Description: Circular chart component for displaying proportional data
+Features: Customizable colors, responsive, perfect for showing percentages
+Usage: Used for showing parking spot distribution, booking types, etc.
+==============================================================================
+-->
+
 <template>
   <div class="chart-container">
+    <!-- Chart title section -->
     <div class="chart-header" v-if="title">
       <h3>{{ title }}</h3>
       <p v-if="subtitle">{{ subtitle }}</p>
     </div>
+    
+    <!-- The doughnut chart display -->
     <div class="chart-wrapper">
       <Doughnut
         :data="chartData"

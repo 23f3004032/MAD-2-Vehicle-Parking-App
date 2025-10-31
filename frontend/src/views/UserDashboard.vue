@@ -1,6 +1,18 @@
+<!--
+==============================================================================
+                              USER DASHBOARD
+                           Main User Interface & Operations
+==============================================================================
+Description: Complete user dashboard with parking management features
+Features: Profile, search parking, book spots, view reservations, analytics
+Usage: Main page users see after login - all parking operations happen here
+==============================================================================
+-->
+
 <template>
   <div class="user-dashboard">
-    <!-- User Navigation Header -->
+    
+    <!-- Top navigation bar with user info and logout -->
     <nav class="user-navbar">
       <div class="container-fluid">
         <div class="user-nav-content">

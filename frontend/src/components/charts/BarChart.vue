@@ -1,9 +1,23 @@
+<!--
+==============================================================================
+                              BAR CHART COMPONENT
+                           Reusable Chart.js Bar Chart
+==============================================================================
+Description: Reusable bar chart component for displaying analytics data
+Features: Customizable colors, responsive design, Chart.js integration
+Usage: Used in admin and user analytics for revenue, bookings, usage data
+==============================================================================
+-->
+
 <template>
   <div class="chart-container">
+    <!-- Chart title and subtitle section -->
     <div class="chart-header" v-if="title">
       <h3>{{ title }}</h3>
       <p v-if="subtitle">{{ subtitle }}</p>
     </div>
+    
+    <!-- The actual bar chart rendered here -->
     <div class="chart-wrapper">
       <Bar
         :data="chartData"
@@ -15,14 +29,17 @@
 </template>
 
 <script setup>
+//------Vue 3 Composition API setup------//
 import { computed } from 'vue'
+
+//------Chart.js imports for bar chart functionality------//
 import {
   Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
+  CategoryScale,    // For x-axis labels
+  LinearScale,      // For y-axis numbers
+  BarElement,       // For drawing bars
+  Title,            // For chart title
+  Tooltip,          // For hover tooltips
   Legend
 } from 'chart.js'
 import { Bar } from 'vue-chartjs'

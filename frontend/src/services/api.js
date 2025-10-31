@@ -1,15 +1,24 @@
+//==============================================================================
+//                           API SERVICE CONFIGURATION
+//                          HTTP Client & Request Management
+//==============================================================================
+// Description: Centralized API communication with backend
+// Features: Automatic authentication, request/response interceptors, error handling
+// Purpose: All backend API calls go through this service
+//==============================================================================
+
 import axios from 'axios'
 import { getToken, removeToken } from '@/utils/auth'
 
-// Create axios instance
+//------Create axios instance with base configuration------//
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: 'http://localhost:5000/api',  // Backend server URL
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json'   // All requests send JSON data
   }
 })
 
-// Ensures all requests are authenticated automatically.
+//====== REQUEST INTERCEPTOR - Adds authentication token automatically ======//
 api.interceptors.request.use(
   (config) => {
     const token = getToken()

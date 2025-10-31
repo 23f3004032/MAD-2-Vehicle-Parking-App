@@ -1,23 +1,38 @@
+<!--
+==============================================================================
+                              ONLYPARK MAIN APP
+                           Root Vue Component
+==============================================================================
+Description: Main app wrapper that holds all our pages and components
+Features: Global styling, theme colors, router outlet
+Purpose: The main container where all our app content gets rendered
+==============================================================================
+-->
+
 <template>
   <div id="app">
+    <!-- This is where all our pages (Login, Dashboard, etc.) get displayed -->
     <router-view />
   </div>
 </template>
 
 <style>
+/* Global styles for the entire OnlyPark application */
+
 #app {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;  /* Makes text look smoother */
+  -moz-osx-font-smoothing: grayscale;   /* For Firefox */
+  min-height: 100vh;  /* Full screen height */
 }
 
+/* App-wide color scheme - I chose these colors for a professional look */
 :root {
-  --primary-color: #3b82f6;
-  --secondary-color: #1e40af;
-  --success-color: #10b981;
-  --danger-color: #ef4444;
-  --warning-color: #f59e0b;
+  --primary-color: #3b82f6;     /* Main blue color */
+  --secondary-color: #1e40af;   /* Darker blue */
+  --success-color: #10b981;     /* Green for success messages */
+  --danger-color: #ef4444;      /* Red for errors */
+  --warning-color: #f59e0b;     /* Orange for warnings */
   --light-bg: #f8fafc;
   --dark-bg: #1e293b;
   --border-color: #e2e8f0;

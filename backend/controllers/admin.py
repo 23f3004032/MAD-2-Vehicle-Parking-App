@@ -1,3 +1,13 @@
+#==============================================================================
+#                           ADMIN CONTROLLER
+#                         Administrative Dashboard & Management
+#==============================================================================
+# Author: Student
+# Description: Admin-only API endpoints for managing the parking system
+# Features: User management, lot management, analytics, cache monitoring
+# Access: Admin role required for all endpoints
+#==============================================================================
+
 from flask import Blueprint, jsonify, g, request
 from models import db, User, Lot, Spot, ReserveSpot
 from extensions import cache

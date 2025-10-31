@@ -1,7 +1,19 @@
+<!--
+==============================================================================
+                              LOGIN PAGE COMPONENT
+                           User Authentication Interface
+==============================================================================
+Description: Login page with branding and authentication form
+Features: JWT token login, form validation, responsive design, error handling
+Usage: Users and admins login here to access their dashboards
+==============================================================================
+-->
+
 <template>
   <div class="login-page">
     <div class="login-container">
-      <!------------------------- Left side - Branding ------------------------>
+      
+      <!-- Left side - Company branding and welcome message -->
       <div class="login-brand">
         <div class="brand-content">
           <router-link to="/" class="brand-title-link">
@@ -16,7 +28,7 @@
         </div>
       </div>
 
-      <!------------------------- Right side - Login Form ------------------------->
+      <!-- Right side - Login form where users enter their credentials -->
       <div class="login-form-section">
         <div class="form-container">
           <div class="form-header">

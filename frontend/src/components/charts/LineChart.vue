@@ -1,9 +1,23 @@
+<!--
+==============================================================================
+                            LINE CHART COMPONENT
+                         Reusable Chart.js Line Chart
+==============================================================================
+Description: Line chart component for displaying trends over time
+Features: Smooth animations, responsive design, customizable styling
+Usage: Perfect for showing revenue trends, booking patterns over time
+==============================================================================
+-->
+
 <template>
   <div class="chart-container">
+    <!-- Chart title and description -->
     <div class="chart-header" v-if="title">
       <h3>{{ title }}</h3>
       <p v-if="subtitle">{{ subtitle }}</p>
     </div>
+    
+    <!-- The line chart visualization -->
     <div class="chart-wrapper">
       <Line
         :data="chartData"
