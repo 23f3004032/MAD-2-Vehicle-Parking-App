@@ -1,29 +1,46 @@
+#==============================================================================
+#                           ONLYPARK CONFIGURATION
+#                         Application Settings & Environment
+#==============================================================================
+# Author: Student
+# Description: Configuration settings for database, cache, email, and Celery
+# Features: Redis cache, Gmail SMTP, Celery scheduling, JWT authentication
+#==============================================================================
+
 import os
 import pytz
 from celery.schedules import crontab
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
+#------Load environment variables from .env file------#
 load_dotenv()
 
+#------Setup database path------#
 basedir = os.path.abspath(os.path.dirname(__file__))
 database_path = os.path.join(basedir, 'app.db')
 
+#==============================================================================
+#                          MAIN CONFIGURATION CLASS
+#==============================================================================
+
 class Config:
+    #------Database Configuration------#
     SQLALCHEMY_DATABASE_URI = f'sqlite:///{database_path}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    #------JWT Authentication Settings------#
     JWT_SECRET_KEY = 'MAD2-PROJECT-SECRET-KEY-CHANGE-IN-PRODUCTION'
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=24)
     
-    # Redis Configuration
+    #------Redis Cache Configuration------#
     CACHE_TYPE = 'RedisCache'
     CACHE_REDIS_HOST = 'localhost'
     CACHE_REDIS_PORT = 6379
     CACHE_REDIS_DB = 0
-    CACHE_DEFAULT_TIMEOUT = 300
+    CACHE_DEFAULT_TIMEOUT = 300  # 5 minutes default cache timeout
     
-    # Celery Configuration
+    #------Celery Background Task Configuration------#
     CELERY_BROKER_URL = 'redis://localhost:6379/0'
     CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
     CELERY_TIMEZONE = 'Asia/Kolkata'
@@ -35,30 +52,30 @@ class Config:
     CELERY_TASK_TRACK_STARTED = True
     CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes max per task
     
-    # For demo/development - execute tasks immediately if Redis not available
+    #------Development/Demo Task Execution------#
     # Note: Set CELERY_EAGER=False in .env for Beat scheduling to work
     CELERY_TASK_ALWAYS_EAGER = os.environ.get('CELERY_EAGER', 'False').lower() == 'true'
     CELERY_TASK_EAGER_PROPAGATES = True
     
-    # Email Configuration
+    #------Email Configuration (Gmail SMTP)------#
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', 'onlyparks19@gmail.com')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', 'eojw fehb wkov myuc')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', 'onlyparks19@gmail.com')
+    MAIL_USERNAME = 'onlyparks19@gmail.com'
+    MAIL_PASSWORD = 'uhtoituvvedgxjps'  # Gmail App Password
+    MAIL_DEFAULT_SENDER = 'onlyparks19@gmail.com'
 
-    # Export Directory
+    #------File Export Directory------#
     EXPORT_DIR = os.path.join(basedir, 'exports')
     
-    # Celery Beat Schedule
+    #------Celery Beat Scheduled Tasks------#
     CELERY_BEAT_SCHEDULE = {
         'daily-reminder-job': {
             'task': 'tasks.send_daily_reminders',
-            'schedule': crontab(hour=1, minute=10),  # Every day at 1:06 AM
+            'schedule': crontab(hour='18', minute='0'),  # Every day at 6 PM IST
         },
         'monthly-report-job': {
             'task': 'tasks.generate_all_monthly_reports',
-            'schedule': crontab(day_of_month='1', hour=1, minute=0),  # Every month at 1 AM
+            'schedule': crontab(day_of_month='1', hour=1, minute=0),  # 1st of every month at 1 AM
         },
     }

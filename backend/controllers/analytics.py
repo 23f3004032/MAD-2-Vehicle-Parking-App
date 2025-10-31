@@ -1,24 +1,47 @@
+#==============================================================================
+#                           ANALYTICS CONTROLLER
+#                         Business Intelligence & Reporting
+#==============================================================================
+# Author: Student
+# Description: Analytics endpoints for admin and user dashboards
+# Features: Revenue tracking, usage patterns, performance metrics, charts data
+# Caching: Intelligent caching with different timeouts for various data types
+#==============================================================================
+
 from flask import Blueprint, jsonify, g, request
 from models import db, User, ReserveSpot, Lot, Spot
 from decorators import login_required, admin_required
 from datetime import datetime, timezone, timedelta
 from sqlalchemy import func, and_, extract
 from collections import defaultdict
+from cache_strategy import (
+    cache_admin_data, cache_user_data, CacheKeys, CacheInvalidator,
+    monitor_performance, AdvancedCacheManager
+)
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/api/analytics')
 
-#------just for timezone handling------#
+#==============================================================================
+#                           UTILITY FUNCTIONS
+#==============================================================================
+
+#------Timezone handling for analytics------#
 def ensure_timezone_aware(dt):
+    """Ensure datetime is timezone-aware for consistent analytics"""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
 
-#--------------------------------------#
-#------ Admin Analytics(TopBar)--------#
-#--------------------------------------#
+#==============================================================================
+#                           ADMIN ANALYTICS DASHBOARD
+#==============================================================================
+
+#------Admin overview statistics------#
 
 @analytics_bp.route('/admin/overview', methods=['GET'])
 @admin_required
+@cache_admin_data(timeout=600)  # Cache for 10 minutes - overview data changes slowly
+@monitor_performance
 def admin_overview():
     try:
         # Total revenue
@@ -58,13 +81,15 @@ def admin_overview():
     except Exception as e:
         return jsonify({'error': 'Failed to get admin overview'}), 500
 
-#------------------------------------------------------#
-#------------------Admin Charts------------------------#
-#------------------------------------------------------#
+#==============================================================================
+#                           ADMIN CHARTS & TRENDS
+#==============================================================================
 
-#------ Revenue Trends -------------------------------#
+#------Revenue trends over time------#
 @analytics_bp.route('/admin/revenue-trends', methods=['GET'])
-@admin_required
+@admin_required  
+@cache_admin_data(timeout=900)  # Cache for 15 minutes - financial data
+@monitor_performance
 def revenue_trends():
     try:
         # Get date range from query params (default to last 30 days)
@@ -108,6 +133,8 @@ def revenue_trends():
 #------Lot Performance,revenue distribution,bookings distribution----------------#
 @analytics_bp.route('/admin/lot-performance', methods=['GET'])
 @admin_required
+@cache_admin_data(timeout=1200)  # Cache for 20 minutes - performance data
+@monitor_performance
 def lot_performance():
     try:
         lot_stats = db.session.query(
@@ -138,6 +165,8 @@ def lot_performance():
 #---------------Hourly Trends---------------------------#
 @analytics_bp.route('/admin/occupancy-trends', methods=['GET'])
 @admin_required
+@cache_admin_data(timeout=1800)  # Cache for 30 minutes - trending data
+@monitor_performance
 def occupancy_trends():
     try:
         # Get bookings with hour of day
@@ -168,6 +197,8 @@ def occupancy_trends():
 #--------------User Stats (Topbar),Month Summary---------#
 @analytics_bp.route('/user/spending-overview', methods=['GET'])
 @login_required
+@cache_user_data(timeout=600)  # Cache for 10 minutes - user overview
+@monitor_performance
 def user_spending_overview():
     try:
         user_id = g.current_user.id
@@ -216,6 +247,8 @@ def user_spending_overview():
 #------------------Your Spending Trends--------------------#
 @analytics_bp.route('/user/spending-trends', methods=['GET'])
 @login_required
+@cache_user_data(timeout=900)  # Cache for 15 minutes - trending data
+@monitor_performance
 def user_spending_trends():
     try:
         user_id = g.current_user.id

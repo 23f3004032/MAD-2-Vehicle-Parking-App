@@ -1,16 +1,28 @@
+#==============================================================================
+#                           CELERY BACKGROUND TASKS
+#                         Email Notifications & Data Export
+#==============================================================================
+# Author: Student
+# Description: Background tasks for email reminders, monthly reports, CSV export
+# Features: Daily reminders, monthly reports, CSV export with email attachments
+# Scheduling: Managed by Celery Beat with IST timezone support
+#==============================================================================
+
+from datetime import datetime, timedelta
 import os
 import csv
-import io
-from datetime import datetime, timedelta
 import pytz
 from sqlalchemy import func
 from flask import current_app
 from flask_mail import Message
-from celery_app import celery
-from extensions import db, mail
+from extensions import db, mail, celery
 from models import User, Lot, Spot, ReserveSpot
 
-# India timezone
+#==============================================================================
+#                           TIMEZONE UTILITIES
+#==============================================================================
+
+#------India timezone configuration------#
 INDIA_TZ = pytz.timezone('Asia/Kolkata')
 
 def get_india_time():
@@ -23,9 +35,13 @@ def to_india_time(dt):
         return INDIA_TZ.localize(dt)
     return dt.astimezone(INDIA_TZ)
 
-#--------------------------Email Template----------------------------#
+#==============================================================================
+#                           EMAIL TEMPLATE SYSTEM
+#==============================================================================
+
+#------HTML email template generator------#
 def create_email_template(subject, body_content, user_name="User"):
-    """Create HTML email template"""
+    """Create professional HTML email template"""
     html_template = f"""
     <!DOCTYPE html>
     <html>
@@ -56,7 +72,11 @@ def create_email_template(subject, body_content, user_name="User"):
     """
     return html_template
 
-#----------Daily Reminder Task----------#
+#==============================================================================
+#                           DAILY REMINDER SYSTEM
+#==============================================================================
+
+#------Scheduled daily reminder task------#
 @celery.task
 def send_daily_reminders():
     """
@@ -70,12 +90,11 @@ def send_daily_reminders():
         new_lots = Lot.query.filter(Lot.created_at >= yesterday).all()
 
         if new_lots:
-            print(f"Found {len(new_lots)} new lots. Notifying all users.")
             all_users = User.query.filter_by(role='user').all()
             
             new_lots_html = "<ul>"
             for lot in new_lots:
-                new_lots_html += f"<li><strong>{lot.name}</strong> at {lot.prime_location_name} (₹{lot.price}/hour)</li>"
+                new_lots_html += f"<li><strong>{lot.name}</strong> - {lot.prime_location_name}</li>"
             new_lots_html += "</ul>"
             
             body_content = f"""
@@ -86,22 +105,24 @@ def send_daily_reminders():
             
             emails_sent = 0
             for user in all_users:
-                html_content = create_email_template("New Parking Lots Available!", body_content, user.fullname)
-                msg = Message(
-                    subject="OnlyPark - ✨ New Parking Lots Added!",
-                    recipients=[user.email],
-                    html=html_content
-                )
-                mail.send(msg)
-                emails_sent += 1
+                try:
+                    html_content = create_email_template("New Parking Locations Available!", body_content, user.fullname)
+                    msg = Message(
+                        subject="OnlyPark - New Parking Locations Available!",
+                        recipients=[user.email],
+                        html=html_content
+                    )
+                    mail.send(msg)
+                    emails_sent += 1
+                except Exception as e:
+                    pass  # Continue with other users if one fails
             
             return f"Notified {emails_sent} users about {len(new_lots)} new lots."
 
         # --- Priority 2: If no new lots, check for inactive users ---
         else:
-            print("No new lots found. Checking for inactive users...")
             
-            seven_days_ago = get_india_time() - timedelta(days=7)  # CORRECTED: Using IST
+            seven_days_ago = get_india_time() - timedelta(days=7)
             
             recent_user_ids = db.session.query(ReserveSpot.user_id)\
                 .filter(ReserveSpot.parking_time >= seven_days_ago)\
@@ -110,32 +131,31 @@ def send_daily_reminders():
             inactive_users = User.query.filter(User.role == 'user', User.id.notin_(recent_user_ids)).all()
 
             if not inactive_users:
-                print("No inactive users to notify.")
-                return "No new lots or inactive users to notify today."
+                return "No inactive users found. All users are actively using the service!"
 
-            print(f"Found {len(inactive_users)} inactive users. Sending reminders.")
-            
             body_content = """
-            <p>We've noticed you haven't parked with us in a while. We miss you!</p>
-            <p>Planning a trip soon? Remember to use OnlyPark to find and book your spot hassle-free. We have plenty of available spaces waiting for you.</p>
-            <p>We hope to see you soon!</p>
+            <p>We miss you! It's been a while since your last parking booking.</p>
+            <p>Don't forget that OnlyPark is here whenever you need convenient parking solutions.</p>
+            <p>Check out our available spots and book your next parking session!</p>
             """
 
             emails_sent = 0
             for user in inactive_users:
-                html_content = create_email_template("We Miss You at OnlyPark!", body_content, user.fullname)
-                msg = Message(
-                    subject="OnlyPark - Your Next Parking Spot Awaits!",
-                    recipients=[user.email],
-                    html=html_content
-                )
-                mail.send(msg)
-                emails_sent += 1
-            
-            return f"Sent re-engagement reminders to {emails_sent} inactive users."
+                try:
+                    html_content = create_email_template("We Miss You!", body_content, user.fullname)
+                    msg = Message(
+                        subject="OnlyPark - We Miss You!",
+                        recipients=[user.email],
+                        html=html_content
+                    )
+                    mail.send(msg)
+                    emails_sent += 1
+                except Exception as e:
+                    pass  # Continue with other users if one fails
+
+            return f"Sent reminder emails to {emails_sent} inactive users."
 
     except Exception as e:
-        print(f"Error in daily reminder task: {e}")
         return f"Error sending daily reminders: {str(e)}"
 
 #----------Monthly Report Task----------#
@@ -145,7 +165,7 @@ def generate_monthly_report(user_id):
     try:
         user = User.query.get(user_id)
         if not user:
-            return f"User with ID {user_id} not found"
+            return f"User {user_id} not found"
         
         # Calculate date range for last month
         now = get_india_time()
@@ -161,7 +181,7 @@ def generate_monthly_report(user_id):
         ).all()
         
         if not month_reservations:
-            return f"No reservations found for user {user_id} in the previous month"
+            return f"No reservations found for user {user_id} in {last_day_previous_month.strftime('%B %Y')}"
         
         # Calculate statistics
         total_reservations = len(month_reservations)
@@ -169,42 +189,38 @@ def generate_monthly_report(user_id):
         total_spent = sum(r.cost or 0 for r in completed_reservations)
         total_hours = 0
         
+        # Calculate total hours
+        for reservation in completed_reservations:
+            if reservation.parking_time and reservation.leaving_time:
+                duration = reservation.leaving_time - reservation.parking_time
+                total_hours += duration.total_seconds() / 3600
+        
         # Find most used lot
         lot_usage = {}
         for reservation in month_reservations:
-            spot = Spot.query.get(reservation.spot_id)
-            if spot:
-                lot_name = spot.lot.name
+            if reservation.spot and reservation.spot.lot:
+                lot_name = reservation.spot.lot.name
                 lot_usage[lot_name] = lot_usage.get(lot_name, 0) + 1
-                
-                if reservation.leaving_time:
-                    parking_time = to_india_time(reservation.parking_time)
-                    leaving_time = to_india_time(reservation.leaving_time)
-                    duration = (leaving_time - parking_time).total_seconds() / 3600
-                    total_hours += duration
         
         most_used_lot = max(lot_usage.items(), key=lambda x: x[1]) if lot_usage else ("N/A", 0)
         
         # Create detailed reservations list
         reservations_details = ""
         for reservation in month_reservations:
-            spot = Spot.query.get(reservation.spot_id)
-            if not spot:
-                continue
-                
-            parking_time = to_india_time(reservation.parking_time)
             status = "Completed" if reservation.leaving_time else "Active"
-            cost = reservation.cost or 0
+            cost = f"₹{reservation.cost:.2f}" if reservation.cost else "₹0.00"
+            spot_name = f"Spot {reservation.spot.spot_number}" if reservation.spot else "N/A"
+            lot_name = reservation.spot.lot.name if reservation.spot and reservation.spot.lot else "N/A"
             
             reservations_details += f"""
-            <tr>
-                <td>{reservation.vehicle_no}</td>
-                <td>{spot.lot.name}</td>
-                <td>{spot.spot_number}</td>
-                <td>{parking_time.strftime('%Y-%m-%d %H:%M')}</td>
-                <td>{status}</td>
-                <td>₹{cost:.2f}</td>
-            </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{reservation.vehicle_no}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{lot_name}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{spot_name}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{reservation.parking_time.strftime('%Y-%m-%d %H:%M')}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{status}</td>
+                    <td style="padding: 10px; border: 1px solid #ddd;">{cost}</td>
+                </tr>
             """
         
         body_content = f"""
@@ -275,10 +291,10 @@ def generate_all_monthly_reports():
         
         for user in users:
             try:
-                result = generate_monthly_report.delay(user.id)
+                generate_monthly_report.delay(user.id)
                 reports_sent += 1
             except Exception as e:
-                continue
+                pass  # Continue with other users if one fails
         
         return f"Monthly report generation initiated for {reports_sent} users"
         
@@ -292,7 +308,7 @@ def export_user_data_csv(user_id, export_type='all'):
     try:
         user = User.query.get(user_id)
         if not user:
-            return f"User with ID {user_id} not found"
+            return f"User {user_id} not found"
         
         # Create export directory if it doesn't exist
         export_dir = current_app.config.get('EXPORT_DIR', 'exports')
@@ -307,42 +323,40 @@ def export_user_data_csv(user_id, export_type='all'):
         reservations = ReserveSpot.query.filter_by(user_id=user_id).all()
         
         if not reservations:
-            return f"No parking data found for user {user_id}"
+            return f"No reservations found for user {user_id}"
         
         # Create CSV file
         with open(filepath, 'w', newline='', encoding='utf-8') as csvfile:
-            fieldnames = [
-                'Booking_ID', 'Vehicle_Number', 'Parking_Location', 'Spot_Number',
-                'Parking_Time', 'Leaving_Time', 'Duration_Hours', 'Cost', 'Status'
-            ]
-            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-            writer.writeheader()
+            writer = csv.writer(csvfile)
             
+            # Write header
+            writer.writerow([
+                'Reservation ID', 'Vehicle Number', 'Parking Location', 'Spot Number',
+                'Parking Time', 'Leaving Time', 'Duration (Hours)', 'Cost', 'Status'
+            ])
+            
+            # Write reservation data
             for reservation in reservations:
-                spot = Spot.query.get(reservation.spot_id)
-                if not spot:
-                    continue
-                    
-                parking_time = to_india_time(reservation.parking_time)
-                leaving_time = to_india_time(reservation.leaving_time) if reservation.leaving_time else None
-                
-                duration_hours = 0
-                if leaving_time:
-                    duration_hours = (leaving_time - parking_time).total_seconds() / 3600
+                duration = ""
+                if reservation.parking_time and reservation.leaving_time:
+                    duration_delta = reservation.leaving_time - reservation.parking_time
+                    duration = f"{duration_delta.total_seconds() / 3600:.2f}"
                 
                 status = "Completed" if reservation.leaving_time else "Active"
+                lot_name = reservation.spot.lot.name if reservation.spot and reservation.spot.lot else "N/A"
+                spot_number = f"Spot {reservation.spot.spot_number}" if reservation.spot else "N/A"  
                 
-                writer.writerow({
-                    'Booking_ID': reservation.id,
-                    'Vehicle_Number': reservation.vehicle_no,
-                    'Parking_Location': spot.lot.name,
-                    'Spot_Number': spot.spot_number,
-                    'Parking_Time': parking_time.strftime('%Y-%m-%d %H:%M:%S IST'),
-                    'Leaving_Time': leaving_time.strftime('%Y-%m-%d %H:%M:%S IST') if leaving_time else 'Active',
-                    'Duration_Hours': f"{duration_hours:.2f}",
-                    'Cost': f"{reservation.cost or 0:.2f}",
-                    'Status': status
-                })
+                writer.writerow([
+                    reservation.id,
+                    reservation.vehicle_no,
+                    lot_name,
+                    spot_number,
+                    reservation.parking_time.strftime('%Y-%m-%d %H:%M:%S') if reservation.parking_time else "",
+                    reservation.leaving_time.strftime('%Y-%m-%d %H:%M:%S') if reservation.leaving_time else "",
+                    duration,
+                    f"₹{reservation.cost:.2f}" if reservation.cost else "₹0.00",
+                    status
+                ])
         
         # Email the CSV file
         body_content = f"""
@@ -369,12 +383,9 @@ def export_user_data_csv(user_id, export_type='all'):
         
         # Attach CSV file
         with open(filepath, 'rb') as f:
-            msg.attach(filename, 'text/csv', f.read())
+            msg.attach(filename, "text/csv", f.read())
         
         mail.send(msg)
-        
-        # Optional: Delete file after sending (uncomment if you want to clean up)
-        # os.remove(filepath)
         
         return f"CSV export sent to {user.email} with {len(reservations)} records"
         

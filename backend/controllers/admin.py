@@ -3,6 +3,11 @@ from models import db, User, Lot, Spot, ReserveSpot
 from extensions import cache
 from decorators import login_required, admin_required
 from datetime import datetime, timezone
+from cache_strategy import (
+    cache_admin_data, CacheKeys, CacheInvalidator, 
+    invalidate_cache_on_change, monitor_performance, CacheConfig,
+    AdvancedCacheManager
+)
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -11,6 +16,8 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 #-------------------------------------------------------#
 @admin_bp.route('/dashboard-stats', methods=['GET'])
 @admin_required
+@cache_admin_data(timeout=CacheConfig.ADMIN_DASHBOARD)
+@monitor_performance
 def get_admin_dashboard_stats():
     try:
         # Get basic counts
@@ -21,11 +28,19 @@ def get_admin_dashboard_stats():
         # Get revenue
         total_revenue = db.session.query(db.func.sum(ReserveSpot.cost)).scalar() or 0
         
+        # Get additional stats for better insights
+        active_reservations = ReserveSpot.query.filter_by(leaving_time=None).count()
+        occupied_spots = Spot.query.filter_by(status='O').count()
+        occupancy_rate = round((occupied_spots / max(total_spots, 1)) * 100, 2)
+        
         return jsonify({
             'total_users': total_users,
             'total_lots': total_lots,
             'total_spots': total_spots,
             'total_revenue': total_revenue,
+            'active_reservations': active_reservations,
+            'occupied_spots': occupied_spots,
+            'occupancy_rate': occupancy_rate
         }), 200
         
     except Exception as e:
@@ -38,12 +53,38 @@ def get_admin_dashboard_stats():
 #------Get all parking lots with their spot statistics------#
 @admin_bp.route('/lots', methods=['GET'])
 @admin_required
+@cache_admin_data(timeout=CacheConfig.LOTS_LIST)
+@monitor_performance
 def get_all_lots():
     try:
+        # Check cache first
+        cached_lots = cache.get(CacheKeys.lots_list())
+        if cached_lots:
+            return jsonify({'lots': cached_lots}), 200
+        
+        # Query database if cache miss
         lots = Lot.query.all()
-        return jsonify({
-            'lots': [lot.to_dict() for lot in lots]
-        }), 200
+        lots_data = []
+        
+        for lot in lots:
+            lot_dict = lot.to_dict()
+            # Add additional admin-specific data
+            total_spots = Spot.query.filter_by(lot_id=lot.id).count()
+            occupied_spots = Spot.query.filter_by(lot_id=lot.id, status='O').count()
+            available_spots = total_spots - occupied_spots
+            
+            lot_dict.update({
+                'total_spots': total_spots,
+                'occupied_spots': occupied_spots,
+                'available_spots': available_spots,
+                'occupancy_rate': round((occupied_spots / max(total_spots, 1)) * 100, 2)
+            })
+            lots_data.append(lot_dict)
+        
+        # Cache the result
+        cache.set(CacheKeys.lots_list(), lots_data, timeout=CacheConfig.LOTS_LIST)
+        
+        return jsonify({'lots': lots_data}), 200
     except Exception as e:
         return jsonify({'error': 'Failed to get parking lots'}), 500
 
@@ -51,6 +92,7 @@ def get_all_lots():
 
 @admin_bp.route('/lots', methods=['POST'])
 @admin_required
+@monitor_performance
 def create_lot():
     try:
         data = request.get_json()
@@ -89,6 +131,11 @@ def create_lot():
         
         db.session.commit()
         
+        # Invalidate caches after creating new lot
+        CacheInvalidator.invalidate_admin_cache()
+        CacheInvalidator.invalidate_lot_cache()
+        CacheInvalidator.invalidate_search_cache()
+        
         return jsonify({
             'message': 'Parking lot created successfully',
             'lot': lot.to_dict()
@@ -96,7 +143,7 @@ def create_lot():
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to create parking lot'}),
+        return jsonify({'error': 'Failed to create parking lot'}), 500
 
 #-------------------------------------------------------#
 #------------Edit and Delete Parking Lots---------------#
@@ -118,6 +165,7 @@ def get_lot_details(lot_id):
 #---------Edit a parking lot---------#
 @admin_bp.route('/lots/<int:lot_id>', methods=['PUT'])
 @admin_required
+@monitor_performance
 def update_lot(lot_id):
     """Update parking lot information"""
     try:
@@ -177,6 +225,11 @@ def update_lot(lot_id):
         
         db.session.commit()
         
+        # Invalidate caches after updating lot
+        CacheInvalidator.invalidate_admin_cache()
+        CacheInvalidator.invalidate_lot_cache()
+        CacheInvalidator.invalidate_search_cache()
+        
         return jsonify({
             'message': 'Parking lot updated successfully',
             'lot': lot.to_dict()
@@ -190,6 +243,7 @@ def update_lot(lot_id):
 
 @admin_bp.route('/lots/<int:lot_id>', methods=['DELETE'])
 @admin_required
+@monitor_performance
 def delete_lot(lot_id):
     try:
         lot = Lot.query.get_or_404(lot_id)
@@ -203,11 +257,110 @@ def delete_lot(lot_id):
         db.session.delete(lot)
         db.session.commit()
         
+        # Invalidate caches after deleting lot
+        CacheInvalidator.invalidate_admin_cache()
+        CacheInvalidator.invalidate_lot_cache()
+        CacheInvalidator.invalidate_search_cache()
+        
         return jsonify({'message': 'Parking lot deleted successfully'}), 200
         
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to delete parking lot'}), 500
+
+#---------------------------------------------------------------------------#
+#-------------------------Cache Management Routes--------------------------#
+#---------------------------------------------------------------------------#
+
+@admin_bp.route('/cache/stats', methods=['GET'])
+@admin_required
+@monitor_performance
+def get_cache_stats():
+    """Get comprehensive cache statistics"""
+    try:
+        cache_manager = AdvancedCacheManager()
+        stats = cache_manager.get_cache_stats()
+        cache_size = cache_manager.get_cache_size()
+        
+        combined_stats = {**stats, **cache_size}
+        
+        return jsonify({
+            'cache_stats': combined_stats,
+            'message': 'Cache statistics retrieved successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to get cache statistics'}), 500
+
+@admin_bp.route('/cache/warm-up', methods=['POST'])
+@admin_required
+@monitor_performance
+def warm_up_cache():
+    """Manually trigger cache warm-up"""
+    try:
+        cache_manager = AdvancedCacheManager()
+        cache_manager.warm_up_cache()
+        
+        return jsonify({
+            'message': 'Cache warm-up completed successfully'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': 'Failed to warm up cache'}), 500
+
+@admin_bp.route('/cache/clear', methods=['POST'])
+@admin_required
+@monitor_performance
+def clear_cache():
+    """Clear all application cache"""
+    try:
+        cache_manager = AdvancedCacheManager()
+        success = cache_manager.clear_all_cache()
+        
+        if success:
+            return jsonify({
+                'message': 'All cache cleared successfully'
+            }), 200
+        else:
+            return jsonify({'error': 'Failed to clear cache'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': 'Failed to clear cache'}), 500
+
+@admin_bp.route('/cache/health', methods=['GET'])
+@admin_required
+def cache_health_check():
+    """Check cache health and connectivity"""
+    try:
+        import redis
+        from extensions import cache as app_cache
+        
+        test_key = "health_check_test"
+        test_value = {"status": "ok", "timestamp": datetime.now().isoformat()}
+        
+        # Test write
+        app_cache.set(test_key, test_value, timeout=60)
+        
+        # Test read  
+        retrieved = app_cache.get(test_key)
+        
+        if retrieved and retrieved.get('status') == 'ok':
+            return jsonify({
+                "status": "healthy", 
+                "cache_type": str(type(app_cache.cache)),
+                "test_successful": True
+            }), 200
+        else:
+            return jsonify({
+                "status": "unhealthy", 
+                "error": "Cache read/write failed"
+            }), 500
+                
+    except Exception as e:
+        return jsonify({
+            "status": "error", 
+            "error": str(e)
+        }), 500
 
 #-------------------------------------------------------#
 #----------------Spot Status Monitoring-----------------#
@@ -278,8 +431,5 @@ def get_spots_status():
         }), 200
         
     except Exception as e:
-        print(f"Error in get_spots_status: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': f'Failed to get spot status: {str(e)}'}), 500
 

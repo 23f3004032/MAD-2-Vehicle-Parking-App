@@ -1,3 +1,13 @@
+#==============================================================================
+#                           USER CONTROLLER
+#                         User Dashboard & Parking Operations
+#==============================================================================
+# Author: Student
+# Description: User-facing API endpoints for parking management and bookings
+# Features: Profile management, parking search, booking system, data export
+# Caching: Redis cache with user-specific invalidation strategies
+#==============================================================================
+
 from flask import Blueprint, jsonify, g, request
 from models import db, User, ReserveSpot, Lot, Spot
 from extensions import cache
@@ -5,23 +15,33 @@ from decorators import login_required
 from datetime import datetime, timezone
 from sqlalchemy import and_
 from tasks import export_user_data_csv
+from cache_strategy import (
+    cache_user_data, cache_search_results, CacheKeys, CacheInvalidator,
+    invalidate_cache_on_change, monitor_performance, CacheConfig
+)
 
 user_bp = Blueprint('user', __name__, url_prefix='/api/user')
 
-#---------------------------------------------------------------------------#
-#-------------Helper Function to handle timezone and billings---------------#
-#---------------------------------------------------------------------------#
+#==============================================================================
+#                           UTILITY FUNCTIONS
+#==============================================================================
+
+#------Timezone handling for billing calculations------#
 def ensure_timezone_aware(dt):
     """Ensure datetime is timezone-aware. If naive, assume UTC."""
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
     return dt
 
-#---------------------------------------------------------------------------#
-#-------------Frontend Route to show logged in user details----------------#
-#---------------------------------------------------------------------------#
+#==============================================================================
+#                           USER PROFILE MANAGEMENT
+#==============================================================================
+
+#------Get user profile information------#
 @user_bp.route('/profile', methods=['GET'])
 @login_required
+@cache_user_data(timeout=CacheConfig.USER_PROFILE)
+@monitor_performance
 def get_profile():
     try:
         return jsonify({
@@ -35,6 +55,8 @@ def get_profile():
 #---------------------------------------------------------------------------#
 @user_bp.route('/dashboard-stats', methods=['GET'])
 @login_required
+@cache_user_data(timeout=CacheConfig.USER_DASHBOARD)
+@monitor_performance
 def get_dashboard_stats():
     try:
         user_id = g.current_user.id
@@ -69,8 +91,33 @@ def get_dashboard_stats():
 #---------------------------------------------------------------------------#
 @user_bp.route('/lots', methods=['GET'])
 @login_required
+@cache_search_results(timeout=CacheConfig.LOTS_LIST)
+@monitor_performance
 def get_available_lots():
     try:
+        # Check if cached lots data exists
+        cached_lots = cache.get(CacheKeys.lots_list())
+        if cached_lots:
+            # Update with real-time availability
+            for lot_data in cached_lots:
+                available_spots = cache.get(CacheKeys.available_spots(lot_data['id']))
+                if available_spots is None:
+                    # Fallback to database if cache miss
+                    available_spots = Spot.query.filter_by(
+                        lot_id=lot_data['id'], 
+                        status='A'
+                    ).count()
+                    cache.set(CacheKeys.available_spots(lot_data['id']), 
+                             available_spots, timeout=CacheConfig.SPOTS_LIST)
+                else:
+                    available_spots = len(available_spots) if isinstance(available_spots, list) else available_spots
+                
+                lot_data['available_spots'] = available_spots
+                lot_data['is_available'] = available_spots > 0
+            
+            return jsonify({'lots': cached_lots}), 200
+        
+        # If no cache, query database
         lots = Lot.query.all()
         lots_data = []
         
@@ -86,6 +133,13 @@ def get_available_lots():
             lot_info['is_available'] = available_spots > 0
             
             lots_data.append(lot_info)
+            
+            # Cache individual lot availability
+            cache.set(CacheKeys.available_spots(lot.id), 
+                     available_spots, timeout=CacheConfig.SPOTS_LIST)
+        
+        # Cache the lots list
+        cache.set(CacheKeys.lots_list(), lots_data, timeout=CacheConfig.LOTS_LIST)
         
         return jsonify({
             'lots': lots_data
@@ -100,6 +154,7 @@ def get_available_lots():
 
 @user_bp.route('/book-spot', methods=['POST'])
 @login_required
+@monitor_performance
 def book_parking_spot():
     try:
         data = request.get_json()
@@ -136,6 +191,12 @@ def book_parking_spot():
         
         db.session.add(reservation)
         db.session.commit()
+        
+        # Invalidate relevant caches after successful booking
+        CacheInvalidator.invalidate_user_cache(g.current_user.id)
+        CacheInvalidator.invalidate_spot_cache(lot_id)
+        CacheInvalidator.invalidate_search_cache()
+        cache.delete(CacheKeys.lots_list())
         
         return jsonify({
             'message': 'Parking spot booked successfully',
@@ -315,8 +376,6 @@ def export_user_data():
         # Trigger the Celery task
         task = export_user_data_csv.delay(user_id, export_type)
         
-        print(f"Export task initiated for user {user_id}, task_id: {task.id}")  # Add logging
-        
         return jsonify({
             'message': 'Data export initiated successfully',
             'task_id': task.id,
@@ -326,7 +385,6 @@ def export_user_data():
         }), 202  # 202 Accepted - request has been accepted for processing
         
     except Exception as e:
-        print(f"Export error: {str(e)}")  # Add logging
         return jsonify({'error': f'Failed to initiate export: {str(e)}'}), 500
 
 #---------------------------------------------------------------------------#
