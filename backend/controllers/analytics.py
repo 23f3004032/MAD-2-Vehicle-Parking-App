@@ -40,8 +40,6 @@ def ensure_timezone_aware(dt):
 
 @analytics_bp.route('/admin/overview', methods=['GET'])
 @admin_required
-@cache_admin_data(timeout=600)  # Cache for 10 minutes - overview data changes slowly
-@monitor_performance
 def admin_overview():
     try:
         # Total revenue
@@ -88,8 +86,6 @@ def admin_overview():
 #------Revenue trends over time------#
 @analytics_bp.route('/admin/revenue-trends', methods=['GET'])
 @admin_required  
-@cache_admin_data(timeout=900)  # Cache for 15 minutes - financial data
-@monitor_performance
 def revenue_trends():
     try:
         # Get date range from query params (default to last 30 days)
@@ -133,8 +129,6 @@ def revenue_trends():
 #------Lot Performance,revenue distribution,bookings distribution----------------#
 @analytics_bp.route('/admin/lot-performance', methods=['GET'])
 @admin_required
-@cache_admin_data(timeout=1200)  # Cache for 20 minutes - performance data
-@monitor_performance
 def lot_performance():
     try:
         lot_stats = db.session.query(
@@ -165,8 +159,6 @@ def lot_performance():
 #---------------Hourly Trends---------------------------#
 @analytics_bp.route('/admin/occupancy-trends', methods=['GET'])
 @admin_required
-@cache_admin_data(timeout=1800)  # Cache for 30 minutes - trending data
-@monitor_performance
 def occupancy_trends():
     try:
         # Get bookings with hour of day
@@ -197,8 +189,6 @@ def occupancy_trends():
 #--------------User Stats (Topbar),Month Summary---------#
 @analytics_bp.route('/user/spending-overview', methods=['GET'])
 @login_required
-@cache_user_data(timeout=600)  # Cache for 10 minutes - user overview
-@monitor_performance
 def user_spending_overview():
     try:
         user_id = g.current_user.id
@@ -247,8 +237,6 @@ def user_spending_overview():
 #------------------Your Spending Trends--------------------#
 @analytics_bp.route('/user/spending-trends', methods=['GET'])
 @login_required
-@cache_user_data(timeout=900)  # Cache for 15 minutes - trending data
-@monitor_performance
 def user_spending_trends():
     try:
         user_id = g.current_user.id

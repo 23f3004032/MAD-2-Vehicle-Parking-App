@@ -63,16 +63,9 @@ def get_admin_dashboard_stats():
 #------Get all parking lots with their spot statistics------#
 @admin_bp.route('/lots', methods=['GET'])
 @admin_required
-@cache_admin_data(timeout=CacheConfig.LOTS_LIST)
-@monitor_performance
 def get_all_lots():
     try:
-        # Check cache first
-        cached_lots = cache.get(CacheKeys.lots_list())
-        if cached_lots:
-            return jsonify({'lots': cached_lots}), 200
-        
-        # Query database if cache miss
+        # Query database directly (no caching for now)
         lots = Lot.query.all()
         lots_data = []
         
@@ -90,9 +83,6 @@ def get_all_lots():
                 'occupancy_rate': round((occupied_spots / max(total_spots, 1)) * 100, 2)
             })
             lots_data.append(lot_dict)
-        
-        # Cache the result
-        cache.set(CacheKeys.lots_list(), lots_data, timeout=CacheConfig.LOTS_LIST)
         
         return jsonify({'lots': lots_data}), 200
     except Exception as e:
@@ -140,11 +130,6 @@ def create_lot():
             db.session.add(spot)
         
         db.session.commit()
-        
-        # Invalidate caches after creating new lot
-        CacheInvalidator.invalidate_admin_cache()
-        CacheInvalidator.invalidate_lot_cache()
-        CacheInvalidator.invalidate_search_cache()
         
         return jsonify({
             'message': 'Parking lot created successfully',
@@ -235,11 +220,6 @@ def update_lot(lot_id):
         
         db.session.commit()
         
-        # Invalidate caches after updating lot
-        CacheInvalidator.invalidate_admin_cache()
-        CacheInvalidator.invalidate_lot_cache()
-        CacheInvalidator.invalidate_search_cache()
-        
         return jsonify({
             'message': 'Parking lot updated successfully',
             'lot': lot.to_dict()
@@ -266,11 +246,6 @@ def delete_lot(lot_id):
         # Delete the lot (cascade will handle spots and reservations)
         db.session.delete(lot)
         db.session.commit()
-        
-        # Invalidate caches after deleting lot
-        CacheInvalidator.invalidate_admin_cache()
-        CacheInvalidator.invalidate_lot_cache()
-        CacheInvalidator.invalidate_search_cache()
         
         return jsonify({'message': 'Parking lot deleted successfully'}), 200
         
