@@ -26,8 +26,6 @@ admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 #-------------------------------------------------------#
 @admin_bp.route('/dashboard-stats', methods=['GET'])
 @admin_required
-@cache_admin_data(timeout=CacheConfig.ADMIN_DASHBOARD)
-@monitor_performance
 def get_admin_dashboard_stats():
     try:
         # Get basic counts
@@ -92,7 +90,6 @@ def get_all_lots():
 
 @admin_bp.route('/lots', methods=['POST'])
 @admin_required
-@monitor_performance
 def create_lot():
     try:
         data = request.get_json()
@@ -160,7 +157,6 @@ def get_lot_details(lot_id):
 #---------Edit a parking lot---------#
 @admin_bp.route('/lots/<int:lot_id>', methods=['PUT'])
 @admin_required
-@monitor_performance
 def update_lot(lot_id):
     """Update parking lot information"""
     try:
@@ -233,7 +229,6 @@ def update_lot(lot_id):
 
 @admin_bp.route('/lots/<int:lot_id>', methods=['DELETE'])
 @admin_required
-@monitor_performance
 def delete_lot(lot_id):
     try:
         lot = Lot.query.get_or_404(lot_id)
@@ -259,7 +254,6 @@ def delete_lot(lot_id):
 
 @admin_bp.route('/cache/stats', methods=['GET'])
 @admin_required
-@monitor_performance
 def get_cache_stats():
     """Get comprehensive cache statistics"""
     try:
@@ -279,7 +273,6 @@ def get_cache_stats():
 
 @admin_bp.route('/cache/warm-up', methods=['POST'])
 @admin_required
-@monitor_performance
 def warm_up_cache():
     """Manually trigger cache warm-up"""
     try:
@@ -295,7 +288,6 @@ def warm_up_cache():
 
 @admin_bp.route('/cache/clear', methods=['POST'])
 @admin_required
-@monitor_performance
 def clear_cache():
     """Clear all application cache"""
     try:

@@ -40,8 +40,6 @@ def ensure_timezone_aware(dt):
 #------Get user profile information------#
 @user_bp.route('/profile', methods=['GET'])
 @login_required
-@cache_user_data(timeout=CacheConfig.USER_PROFILE)
-@monitor_performance
 def get_profile():
     try:
         return jsonify({
@@ -55,8 +53,6 @@ def get_profile():
 #---------------------------------------------------------------------------#
 @user_bp.route('/dashboard-stats', methods=['GET'])
 @login_required
-@cache_user_data(timeout=CacheConfig.USER_DASHBOARD)
-@monitor_performance
 def get_dashboard_stats():
     try:
         user_id = g.current_user.id
@@ -91,33 +87,9 @@ def get_dashboard_stats():
 #---------------------------------------------------------------------------#
 @user_bp.route('/lots', methods=['GET'])
 @login_required
-@cache_search_results(timeout=CacheConfig.LOTS_LIST)
-@monitor_performance
 def get_available_lots():
     try:
-        # Check if cached lots data exists
-        cached_lots = cache.get(CacheKeys.lots_list())
-        if cached_lots:
-            # Update with real-time availability
-            for lot_data in cached_lots:
-                available_spots = cache.get(CacheKeys.available_spots(lot_data['id']))
-                if available_spots is None:
-                    # Fallback to database if cache miss
-                    available_spots = Spot.query.filter_by(
-                        lot_id=lot_data['id'], 
-                        status='A'
-                    ).count()
-                    cache.set(CacheKeys.available_spots(lot_data['id']), 
-                             available_spots, timeout=CacheConfig.SPOTS_LIST)
-                else:
-                    available_spots = len(available_spots) if isinstance(available_spots, list) else available_spots
-                
-                lot_data['available_spots'] = available_spots
-                lot_data['is_available'] = available_spots > 0
-            
-            return jsonify({'lots': cached_lots}), 200
-        
-        # If no cache, query database
+        # Get all lots directly from database (no caching for now)
         lots = Lot.query.all()
         lots_data = []
         
@@ -133,13 +105,6 @@ def get_available_lots():
             lot_info['is_available'] = available_spots > 0
             
             lots_data.append(lot_info)
-            
-            # Cache individual lot availability
-            cache.set(CacheKeys.available_spots(lot.id), 
-                     available_spots, timeout=CacheConfig.SPOTS_LIST)
-        
-        # Cache the lots list
-        cache.set(CacheKeys.lots_list(), lots_data, timeout=CacheConfig.LOTS_LIST)
         
         return jsonify({
             'lots': lots_data
@@ -154,7 +119,6 @@ def get_available_lots():
 
 @user_bp.route('/book-spot', methods=['POST'])
 @login_required
-@monitor_performance
 def book_parking_spot():
     try:
         data = request.get_json()
