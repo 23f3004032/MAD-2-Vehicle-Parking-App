@@ -27,7 +27,7 @@ from celery_app import make_celery
 @event.listens_for(Engine, "connect")
 def enable_sqlite_fk(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, sqlite3.Connection):
-        cursor = dbapi_connection.cursor()
+        cursor = dbapi_Nconnection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
 

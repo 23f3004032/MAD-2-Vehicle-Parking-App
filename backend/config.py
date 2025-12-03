@@ -60,9 +60,9 @@ class Config:
     MAIL_SERVER = 'smtp.gmail.com'
     MAIL_PORT = 587
     MAIL_USE_TLS = True
-    MAIL_USERNAME = 'onlyparks19@gmail.com'
-    MAIL_PASSWORD = 'uhtoituvvedgxjps'  # Gmail App Password
-    MAIL_DEFAULT_SENDER = 'onlyparks19@gmail.com'
+    MAIL_USERNAME = '' # Your Gmail address
+    MAIL_PASSWORD = ''  # Gmail App Password
+    MAIL_DEFAULT_SENDER = ''
 
     #------File Export Directory------#
     EXPORT_DIR = os.path.join(basedir, 'exports')
