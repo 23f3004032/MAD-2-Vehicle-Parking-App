@@ -1,126 +1,54 @@
-# OnlyPark - Smart Parking Management System
+# OnlyPark
 
-OnlyPark is a modern parking management application that streamlines parking spot reservations and administration. Built with Flask and Vue.js, it provides a seamless experience for both users and administrators.
+A vehicle parking management system with separate admin and user experiences: admins manage lots and spots, users search for parking and book a spot in real time. Built as a full-stack project for the Modern Application Development 2 (MAD 2) course.
 
-## 🚀 Features
+## Features
 
-- **User Management**: Secure registration and authentication system
-- **Real-time Parking**: Browse and reserve available parking spots
-- **Admin Dashboard**: Comprehensive analytics and parking lot management
-- **Email Notifications**: Automated daily reminders and booking confirmations
-- **Analytics**: Visual charts for parking usage and revenue tracking
-- **Responsive Design**: Modern UI that works on all devices
+**For users**
+- Register and log in with a JWT-secured account
+- Browse parking lots with live availability (available vs occupied spot counts)
+- Book a spot with one click — the system auto-allocates the first free spot in the chosen lot
+- Release a spot when leaving, with cost computed from actual parking duration and the lot's hourly rate
+- View active bookings (with a running estimated cost) and full booking history
+- Personal analytics dashboard: total spend, average cost per booking, favorite lot, spending trends over time, and per-lot usage breakdown
+- Request a CSV export of their full booking history, generated asynchronously and emailed as an attachment
 
-## 🛠️ Tech Stack
+**For admins**
+- Create, edit, and delete parking lots, with spots generated (or removed) automatically to match the configured spot count
+- Deletion and spot-count reduction are blocked while spots are still occupied, so occupied spots can't be silently dropped
+- Live view of every spot across all lots, including which vehicle/user occupies it and since when
+- Admin dashboard with totals for users, lots, spots, revenue, active reservations, and occupancy rate
+- Admin analytics: revenue trends, per-lot performance (bookings, revenue, unique users), and booking activity by hour of day
+- Cache inspection endpoints (stats, health check, manual warm-up/clear) for the Redis-backed caching layer
 
-**Backend:**
-- Flask (Python web framework)
-- SQLAlchemy (Database ORM)
-- Celery (Background task processing)
-- Redis (Caching and message broker)
-- JWT (Authentication)
+**Background jobs**
+- Daily reminder emails via Celery Beat — new-lot alerts if any lot was added in the last 24 hours, otherwise a nudge to users who haven't parked in 7+ days
+- Automated monthly activity report emailed to every user, with a full breakdown of that month's bookings
+- Asynchronous CSV export of a user's parking history, emailed on completion
 
-**Frontend:**
-- Vue.js 3 (JavaScript framework)
-- Bootstrap 5 (UI components)
-- Chart.js (Data visualization)
-- Vite (Build tool)
+A default admin account (`admin@onlypark.com`) is seeded automatically on first run.
 
-## 📋 Prerequisites
+## Tech stack
 
-- Python 3.8+
-- Node.js 16+
-- Redis Server
-- WSL (for Redis on Windows)
+**Backend**
+- Flask
+- Flask-SQLAlchemy (ORM) with SQLite
+- Flask-JWT-Extended for authentication
+- Flask-Caching with Redis as the cache backend
+- Celery + Redis for background jobs and scheduled tasks (Celery Beat)
+- Flask-Mail for email delivery
+- Flask-CORS
+- Pandas (CSV export handling)
 
-## 🚀 Getting Started
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/your-username/MAD-2-Vehicle-Parking-App.git
-cd MAD-2-Vehicle-Parking-App
-```
-
-### 2. Backend Setup
-```powershell
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python app.py
-```
-
-### 3. Frontend Setup
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-### 4. Redis Server (WSL/Ubuntu)
-```bash
-redis-server
-redis-cli ping
-```
-
-### 5. Background Tasks
-Open separate terminals for each:
-
-**Celery Worker:**
-```powershell
-celery -A app.celery worker -l info -P threads
-```
-
-**Celery Beat (Scheduler):**
-```powershell
-celery -A app.celery beat --loglevel=info
-```
-
-## 📱 Access Points
-
-- **Frontend**: http://localhost:5173
-- **Backend API**: http://localhost:5000
-- **Admin Panel**: Login with `admin@admin.com` / `admin`
-
-## 🏗️ Project Structure
-
-```
-├── backend/
-│   ├── controllers/         # API route handlers
-│   ├── models.py           # Database models
-│   ├── app.py              # Main application
-│   ├── celery_app.py       # Background tasks
-│   └── requirements.txt    # Python dependencies
-├── frontend/
-│   ├── src/
-│   │   ├── components/     # Vue components
-│   │   ├── views/          # Page components
-│   │   └── services/       # API services
-│   └── package.json        # Node dependencies
-└── README.md
-```
-
-## 🔧 Key Features
-
-- **JWT Authentication**: Secure user sessions
-- **Role-based Access**: Separate user and admin interfaces
-- **Real-time Updates**: Live parking availability
-- **Email Integration**: Automated notification system
-- **Data Analytics**: Usage statistics and revenue reports
-- **Responsive Design**: Mobile-friendly interface
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a Pull Request
-
-## 📄 License
-
-This project is part of a university coursework assignment.
+**Frontend**
+- Vue 3 (Composition API, `<script setup>` style views)
+- Vue Router with navigation guards for auth and role-based access
+- Axios for API calls
+- Chart.js via vue-chartjs for the analytics dashboards (bar, line, and doughnut charts)
+- Bootstrap 5 for layout and styling
+- Vite as the build tool
 
 ---
 
-**OnlyPark** - Revolutionizing parking management, one spot at a time.
+**Ankit Singh**
+[LinkedIn](https://www.linkedin.com/in/ankit-singh-117925249/)
